@@ -9,12 +9,16 @@
 	"dependencies": {
 		"cheerio": "latest",
 		"request": "latest",
-		"async": "latest"
+		"async": "latest",
+		"got": "latest",
+		"set-cookie-parser": "latest"
 	},
 	"devDependencies": {
 		"cheerio": "latest",
 		"request": "latest",
-		"async": "latest"
+		"async": "latest",
+		"got": "latest",
+		"set-cookie-parser": "latest"
 	},
 	"author": "",
 	"license": "MIT"
