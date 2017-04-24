@@ -5,7 +5,7 @@
   "latedef":"nofunc",//先定义变量,函数声明除外
   "undef":true,//变量未定义
   //"unused":"strict",//检查未使用的变量与函数参数，跳过函数
-  "noarg":true,//禁止使用 arguments.caller 和 arguments.callee
+  //"noarg":true,//禁止使用 arguments.caller 和 arguments.callee
   "maxparams": 4,//最多参数个数
   "browser":true,//允许与浏览器相关的关键字,如document、history、clearIntreval等
   "devel":true,//允许与开发相关的关键字,像alert,console等

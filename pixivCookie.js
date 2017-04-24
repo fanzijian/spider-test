@@ -1,6 +1,6 @@
 const got = require('got');
 const setCookieParser = require('set-cookie-parser');
-const fs = require('fs');
+
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.59 Safari/537.36';
 const LOGIN_URL = 'http://www.pixiv.net';
@@ -55,7 +55,7 @@ const pixivCookie = function(username, password){
 					json: true
 				})
 				.then(function(response){
-					console.log('response');
+					//console.log('response');
 					const body = response.body, headers = response.headers;
 					if (body.error) {
 						reject(new Error(body.message));
@@ -72,8 +72,4 @@ const pixivCookie = function(username, password){
 	});
 };
 
-pixivCookie('1158534904@qq.com','Teamo0629').then(function(cookie){
-    console.log(cookie);
-}).catch(function(error){
-    console.log(error);
-});
+module.exports = pixivCookie;

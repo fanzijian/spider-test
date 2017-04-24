@@ -48,8 +48,8 @@ function getNewsList(url) {
 				resolve(urlArr);
 			});
 
-		}).on('error', function (err) {
-			console.log(err);
+		}).on('error', function (error) {
+			console.log(error);
 			reject(error);
 		});
 	});
