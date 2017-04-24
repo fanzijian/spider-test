@@ -1,10 +1,10 @@
 const got = require('got');
 const setCookieParser = require('set-cookie-parser');
-var fs = require('fs');
+const fs = require('fs');
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.59 Safari/537.36';
 const LOGIN_URL = 'http://www.pixiv.net';
-const LOGIN_API_URL = 'https://accounts.pixiv.net/login';
+const LOGIN_API_URL = 'https://accounts.pixiv.net/api/login?lang=zh';
 
 const pixivCookie = function(username, password){
 	return new Promise(function(resolve, reject){
@@ -43,14 +43,14 @@ const pixivCookie = function(username, password){
 						})()
 					},
 					body: {
-						pixiv_id: username,
-						password: password,
 						captcha: '',
 						g_recaptcha_response: '',
+						password: password,
+						pixiv_id: username,
 						post_key: obj.token,
-						source: 'pc',
 						ref: 'wwwtop_accounts_index',
-						return_to: 'http://www.pixiv.net/'
+						return_to: 'https://www.pixiv.net/',
+						source: 'pc'
 					},
 					json: true
 				})
@@ -67,15 +67,12 @@ const pixivCookie = function(username, password){
 				})
 				.catch(function(error){
 					reject(error);
-				})
+				});
 		});
 	});
 };
 
-pixivCookie({
-    username: 'M201571695@hust.edu.cn',
-    password: '23#224'
-}).then(function(cookie){
+pixivCookie('1158534904@qq.com','Teamo0629').then(function(cookie){
     console.log(cookie);
 }).catch(function(error){
     console.log(error);
