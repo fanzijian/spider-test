@@ -1,3 +1,5 @@
 # App specific
 
 node_modules/
+*.html
+*.txt
