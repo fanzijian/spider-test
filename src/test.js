@@ -8,7 +8,12 @@ const LOGIN_URL = 'http://www.pixiv.net';
 const FELLOW_URL = 'https://www.pixiv.net/bookmark.php?type=user&id=';
 const MAX_PER_PAGE = 48;
 var opt = '';
+var tmp = [];
+
+var SpiderPixiv = require('./spiderPixiv');
+
 pixivCookie('1158534904@qq.com','Teamo0629').then(function(cookies){
+	console.log(cookies);
 	opt = {
 		headers: {
 			Origin: 'https://www.pixiv.net',
@@ -23,33 +28,41 @@ pixivCookie('1158534904@qq.com','Teamo0629').then(function(cookies){
 			})()
 		}
 	};
-	getOnesAllFans();
+	var spider = new SpiderPixiv('2327032');
+	console.log(Object.keys(spider));
+	spider.getOnesAllFans(opt, tmp);
+	//getOnesAllFans('2327032');
 }).catch(function(error){
 	console.log(error);
 });
-function getOnesAllFans(){
 
-	var fans = '';
-	var id = '2327032';
-	var total = 0;
-	var url = 'https://www.pixiv.net/bookmark.php?type=user&id=2327032&p=';
+
+/**
+ * [getOnesAllFans 获取某人的所有关注用户]
+ * @return {[type]} [description]
+ */
+function getOnesAllFans(id){
 	
-	got(url + 1, opt)
+	var url = FELLOW_URL + id + '&p=1';
+	
+	got(url, opt)
 	.then(function(response){
 		var html = response.body;
 		var $ = cheerio.load(html);
 		//console.log(html);
 		var lis = $('#search-result').first().find('.members .usericon a');
-		total = parseInt($('#page-bookmark-user .layout-column-2 .column-header span').text());
-		
+		var total = parseInt($('#page-bookmark-user .layout-column-2 .column-header span').text());
+		var data = '';
 		lis.each(function(index, ele){ 
-			fans += '第' + index + '画师:' + $(this).attr('data-user_id') + $(this).attr('data-user_name') + '\r\n';
+			data += '第' + index + '画师:' + $(this).attr('data-user_id') + ' ' + $(this).attr('data-user_name') + '\r\n';
+			tmp.push($(this).attr('data-user_id'));
 		});
-		fs.appendFile(id + '.txt',fans,'utf-8',function(e){
+		fs.appendFile(id + '.txt',data,'utf-8',function(e){
 			console.log(e);
 		});
+
 		for(var i = 1; i * MAX_PER_PAGE < total; i++){
-			getOnePageFans(id, url, i + 1);
+			getOnePageFans(id, i + 1);
 		}
 	})
 	.catch(function(err){
@@ -57,8 +70,31 @@ function getOnesAllFans(){
 	});
 	
 }
-function getOnePageFans(id, url, p){
-	got(url + p, opt)
+var count = 1;
+function getHandle(total){
+	return function(err){
+		count++;
+		if(err){
+			console.log(err);
+		}else{
+			console.log('第' + count + '页下载完毕',count);
+		}
+		if(count >= total){
+			console.log(tmp);
+			console.log('所有下载完毕');
+		}
+	};
+}
+
+/**
+ * [getOnePageFans 获取某页所有的关注用户]
+ * @param  {[type]} id  [用户id]
+ * @param  {[type]} p   [页码]
+ * @return {[type]}     [输出到文件id.txt]
+ */
+function getOnePageFans(id, p){
+	var url = FELLOW_URL + id + '&p=' + p;
+	got(url, opt)
 	.then(function(response){
 		var html = response.body;
 		var $ = cheerio.load(html);
@@ -67,12 +103,11 @@ function getOnePageFans(id, url, p){
 		//total = parseInt($('#page-bookmark-user .layout-column-2 .column-header span').text());
 		var data = '';
 		lis.each(function(index, ele){ 
-			data += '第' + ((p - 1) * MAX_PER_PAGE + index) + '画师:' + $(this).attr('data-user_id') + $(this).attr('data-user_name') + '\r\n';
+			data += '第' + ((p - 1) * MAX_PER_PAGE + index) + '画师:' + $(this).attr('data-user_id')+ ' '  + $(this).attr('data-user_name') + '\r\n';
+			tmp.push($(this).attr('data-user_id'));
 		});
-		fs.appendFile(id + '.txt',data,'utf-8',function(e){
-			console.log(e);
-		});
-		console.log('第' + p + '页下载完毕');
+		//console.log(data);
+		fs.appendFile(id + '.txt',data,'utf-8',getHandle(5));
 	})
 	.catch(function(err){
 		console.log(err);

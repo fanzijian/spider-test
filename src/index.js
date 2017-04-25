@@ -57,7 +57,7 @@ function getNewsList(url) {
 
 //该函数的作用：在本地存储所爬取的新闻内容资源
 function saveNews(news) {
-	var title = './data/' + news.title + ' ' + news.time + '.txt';
+	var title = '.././data/' + news.title + ' ' + news.time + '.txt';
 	//采用http模块向服务器发起一次get请求      
 	http.get(news.url, function (res) {     
 		var html = '';        //用来存储请求网页的整个html内容
