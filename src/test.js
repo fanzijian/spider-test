@@ -35,7 +35,8 @@ pixivCookie('M201571695@hust.edu.cn','23#224').then(function(cookies){
 		}
 	};
 	var spider = new SpiderPixiv('4028962');
-	spider.getOnesAllFans(config);
+	spider.start(config);
+	
 }).catch(function(error){
 	console.log(error);
 });
