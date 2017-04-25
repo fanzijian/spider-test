@@ -11,14 +11,16 @@
 		"request": "latest",
 		"async": "latest",
 		"got": "latest",
-		"set-cookie-parser": "latest"
+		"set-cookie-parser": "latest",
+		"bloomfilter": "latest"
 	},
 	"devDependencies": {
 		"cheerio": "latest",
 		"request": "latest",
 		"async": "latest",
 		"got": "latest",
-		"set-cookie-parser": "latest"
+		"set-cookie-parser": "latest",
+		"bloomfilter": "latest"
 	},
 	"author": "",
 	"license": "MIT"

@@ -1,21 +1,26 @@
 const pixivCookie = require('./pixivCookie');
-const TaskSet = require('./TaskSet');
-
+const BloomFilter = require('bloomfilter');
 const got = require('got');
 const cheerio = require('cheerio');
 const fs = require('fs');
+
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.59 Safari/537.36';
 const LOGIN_URL = 'http://www.pixiv.net';
 const FELLOW_URL = 'https://www.pixiv.net/bookmark.php?type=user&id=';
 const MAX_PER_PAGE = 48;
-var opt = '';
-var taskSet = new TaskSet();
+
+var config = {
+	opt: '',
+	seq: 0,
+	bloom: new BloomFilter.BloomFilter( 200 * 1024 * 1024 * 8, 8)
+};
+//var bloom = new BloomFilter.BloomFilter( 200 * 1024 * 1024 * 8, 8);
 
 var SpiderPixiv = require('./SpiderPixiv');
 
 pixivCookie('M201571695@hust.edu.cn','23#224').then(function(cookies){
 	console.log(cookies);
-	opt = {
+	config.opt = {
 		headers: {
 			Origin: 'https://www.pixiv.net',
 			'User-Agent': USER_AGENT,
@@ -29,23 +34,8 @@ pixivCookie('M201571695@hust.edu.cn','23#224').then(function(cookies){
 			})()
 		}
 	};
-	var spider = new SpiderPixiv('2327032');
-	spider.getOnesAllFans(opt, taskSet);
-
-	// var i = 0;
-	// while(true){
-	// 	if(i > 10){
-	// 		break;
-	// 	}
-	// 	var task = taskSet.getOnePendingTask();
-	// 	if(typeof task === "undefined"){
-	// 		console.log('no task to  be handle');
-	// 	}else{
-	// 		var spider = new SpiderPixiv(task);
-	// 		spider.getOnesAllFans(opt, taskSet);
-	// 	}
-	// 	i++;
-	// }
+	var spider = new SpiderPixiv('4028962');
+	spider.getOnesAllFans(config);
 }).catch(function(error){
 	console.log(error);
 });
