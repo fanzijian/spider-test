@@ -39,32 +39,37 @@ SpiderPixiv.prototype.start = function(config){
 			}
 
 		});
-		//将数据存储进入users.txt
-		fs.appendFile('./data/users.txt',data, 'utf-8',function(err){
-			if(err){
-				console.log(id + '关注的' + data + '添加失败！');
-			}
-		});
+
 		//若用户没有关注任何人
 		if(that.maxPage === 0){
-			console.log('大佬就是这么自信，从来不关注其他人╭(╯^╰)╮');
-			that.startNewTask(config);
-		}
-		//若用户只关注了一页人
-		if(that.maxPage === 1){
-			console.log('哎呀，只有一页关注⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
-			that.startNewTask(config);
+			console.log(id + '大佬就是这么自信，从来不关注其他人╭(╯^╰)╮');
+			config.pre++;
 		}else{
-			//用户关注了多页人
-			//多页同时开始爬取
-			for(var i = 1; i * MAX_PER_PAGE < that.total; i++){
-				that.getOnePageFans(i + 1, config);
-			}		
+			//将数据存储进入users.txt
+			fs.appendFile('./data/users.txt',data, 'utf-8',function(err){
+				if(err){
+					console.log(id + '关注的' + data + '添加失败！');
+				}
+				if(that.maxPage === 1){
+				//若用户只关注了一页人
+				console.log(id + '哎呀，只有一页关注⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
+				}
+			});
+			if(that.maxPage === 1){
+				//若用户只关注了一页人
+				//console.log(id + '哎呀，只有一页关注⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
+				config.pre++;
+			}else{
+				//用户关注了多页人
+				//多页同时开始爬取
+				for(var i = 1; i * MAX_PER_PAGE < that.total; i++){
+					that.getOnePageFans(i + 1, config);
+				}		
+			}
 		}
-
 	})
 	.catch(function(err){
-		console.log(err);
+		console.log('网络错误' + err);
 	});
 };
 /**
@@ -94,6 +99,7 @@ SpiderPixiv.prototype.getOnePageFans = function(p, config){
 			}
 		});
 		//存储数据
+		config.taskNum++;
 		fs.appendFile('./data/users.txt', data, 'utf-8', that.getHandle2(config));
 	})
 	.catch(function(err){
@@ -108,16 +114,16 @@ SpiderPixiv.prototype.getOnePageFans = function(p, config){
 SpiderPixiv.prototype.getHandle2 = function(config){
 	var that = this;
 	return function(err){
-		console.log(that.id,that.count, that.total);
+		//console.log(that.id,that.count, that.total);
 		that.count++;
 		if(err){
 			console.log(err);
 		}else{
-			//console.log('第' + that.count + '页下载完毕');
+			console.log(that.id + '第' + that.count + '页下载完毕');
 		}
 		if(that.count >= that.maxPage){
-			console.log(that.id + '关注列表下载完毕','最大页数' + that.maxPage, '当前页数' + that.count);
-			that.startNewTask(config);
+			console.log(that.id + '关注列表下载完毕','最大页数' + that.maxPage, '当前页数' + that.count,'当前任务序号:' + config.pre);
+			config.pre++;
 		}
 	};
 };
@@ -143,7 +149,6 @@ SpiderPixiv.prototype.startNewTask = function(config){
 			spider.start(config);
 			config.seq ++;
 		}
-
 	});
 };
 module.exports = SpiderPixiv;

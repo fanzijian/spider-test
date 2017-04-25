@@ -12,7 +12,8 @@
 		"async": "latest",
 		"got": "latest",
 		"set-cookie-parser": "latest",
-		"bloomfilter": "latest"
+		"bloomfilter": "latest",
+		"system-sleep": "latest"
 	},
 	"devDependencies": {
 		"cheerio": "latest",
@@ -20,7 +21,8 @@
 		"async": "latest",
 		"got": "latest",
 		"set-cookie-parser": "latest",
-		"bloomfilter": "latest"
+		"bloomfilter": "latest",
+		"system-sleep": "latest"
 	},
 	"author": "",
 	"license": "MIT"
