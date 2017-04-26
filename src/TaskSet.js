@@ -23,6 +23,9 @@ TaskSet.prototype.add = function(id){
 	}
 	return this;
 };
+TaskSet.prototype.test = function(id){
+	return this.finishedTaskSet.has(id) || this.pendingTaskSet.has(id);
+};
 /**
  * [getSomePendingTask 从任务列表中获取部分待处理任务]
  * @param  {[type]} num [任务数目]

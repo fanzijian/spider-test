@@ -1,10 +1,18 @@
 const got = require('got');
 const cheerio = require('cheerio');
 const fs = require('fs');
-const MAX_PER_PAGE = 48;
-const FELLOW_URL = 'https://www.pixiv.net/bookmark.php?type=user&id=';
-
-function SpiderPixiv(id){
+const MAX_PER_PAGE = 20;
+//作品列表网址
+const PICLIST_URL = 'https://www.pixiv.net/member_illust.php?id=';
+//单个作品详情网址，点赞，浏览量等
+const PICINFO_URL = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=';
+//单个作品收藏量网址
+const COLLECTION_URL = 'https://www.pixiv.net/bookmark_detail.php?illust_id=';
+/**
+ * [Works 作品爬取对象构造函数]
+ * @param {[type]} id [作者id]
+ */
+function Works(id){
 	this.id = id;
 	this.count = 1;
 	this.total = 0;
@@ -15,10 +23,10 @@ function SpiderPixiv(id){
  * @param  {[type]} config [description]
  * @return {[type]}        [description]
  */
-SpiderPixiv.prototype.start = function(config){
+Works.prototype.start = function(config){
 	var that = this;
 	var id = this.id;
-	var url = FELLOW_URL + id + '&p=1';
+	var url = PICLIST_URL + id + '&p=1';
 	//https请求网页
 	got(url, config.opt)
 	.then(function(response){
@@ -26,8 +34,8 @@ SpiderPixiv.prototype.start = function(config){
 		var html = response.body;
 		var $ = cheerio.load(html);
 		//解析网页，获取当前用户的关注的总人数等信息
-		var lis = $('#search-result').first().find('.members .usericon a');
-		that.total = parseInt($('#page-bookmark-user .layout-column-2 .column-header span').text());
+		var lis = $('.image-item ');
+		that.total = parseInt($('.count-badge').text());
 		that.maxPage = Math.ceil(that.total/MAX_PER_PAGE);
 		//获取首页关注的所有用户id
 		var data = '';
@@ -41,49 +49,26 @@ SpiderPixiv.prototype.start = function(config){
 
 		});
 
-		//若用户没有关注任何人
-		if(that.maxPage === 0){
-			console.log(id + '大佬就是这么自信，从来不关注其他人╭(╯^╰)╮');
-			config.pre++;
-		}else{
-			//将数据存储进入users.txt
-			fs.appendFile('./data/users.txt',data, 'utf-8',function(err){
-				if(err){
-					console.log(id + '关注的' + data + '添加失败！');
-				}
-				if(that.maxPage === 1){
-					//若用户只关注了一页人
-					console.log(id + '哎呀，只有一页关注⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
-					config.pre++;
-				}
-			});
-			if(that.maxPage === 1){
-				//若用户只关注了一页人
-				//console.log(id + '哎呀，只有一页关注⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
-			}else{
-				//用户关注了多页人
-				//多页同时开始爬取
-				for(var i = 1; i * MAX_PER_PAGE < that.total; i++){
-					that.getOnePageFans(i + 1, config);
-				}		
-			}
-		}
 	})
 	.catch(function(err){
 		console.log('网络错误' + err);
 		config.pre++;
 	});
 };
+Works.prototype.getOnePageInfo = function(argument){
+	// body... 
+};
+
 /**
  * [getOnePageFans 爬取某页的用户]
  * @param  {[type]} p      [页码]
  * @param  {[type]} config [初始化信息]
  * @return {[type]}        [description]
  */
-SpiderPixiv.prototype.getOnePageFans = function(p, config){
+Works.prototype.getOnePageFans = function(p, config){
 	var that = this;
 	var id = this.id;
-	var url = FELLOW_URL + id + '&p=' + p;
+	var url = PICLIST_URL + id + '&p=' + p;
 	//请求网页
 	got(url, config.opt)
 	.then(function(response){
@@ -113,7 +98,7 @@ SpiderPixiv.prototype.getOnePageFans = function(p, config){
  * @param  {[type]} config [description]
  * @return {[type]}        [description]
  */
-SpiderPixiv.prototype.getHandle2 = function(config){
+Works.prototype.getHandle2 = function(config){
 	var that = this;
 	return function(err){
 		//console.log(that.id,that.count, that.total);
@@ -129,29 +114,5 @@ SpiderPixiv.prototype.getHandle2 = function(config){
 		}
 	};
 };
-/**
- * [startNewTask 从文件中读取一个新id，开始爬取用户列表]
- * @param  {[type]} config [description]
- * @return {[type]}        [description]
- */
-SpiderPixiv.prototype.startNewTask = function(config){
-	//console.log("config.seq=" + config.seq);
-	//读取文件并开始爬取信息
-	fs.readFile('./data/users.txt','utf-8',function(err, buffer){
-		if(err){
-			console.log('读取数据失败');
-		}else{
-			var userIdArr = buffer.trim().split(' ');
-			var id = userIdArr[config.seq];
-			console.log('第' + config.seq + '个任务:',id);
-			if(typeof id === "undefined"){
-				console.log("finished");
-			}else{
-				var spider = new SpiderPixiv(id);
-				spider.start(config);
-				config.seq ++;
-			}	
-		}
-	});
-};
-module.exports = SpiderPixiv;
+
+module.exports = Works;
