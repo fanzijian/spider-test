@@ -1,97 +1,131 @@
 const got = require('got');
 const cheerio = require('cheerio');
 const fs = require('fs');
-const MAX_PER_PAGE = 48;
-const FELLOW_URL = 'https://www.pixiv.net/bookmark.php?type=user&id=';
+const Picture = require('./Picture');
+const pixivCookie = require('./pixivCookie');
+const async = require('async');
+const sleep = require('system-sleep');
+const MAX_PER_PAGE = 20;
+//作品列表网址
+const PICLIST_URL = 'https://www.pixiv.net/member_illust.php?id=';
+//单个作品详情网址，点赞，浏览量等
+const PICINFO_URL = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=';
+//单个作品收藏量网址
+const COLLECTION_URL = 'https://www.pixiv.net/bookmark_detail.php?illust_id=';
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.59 Safari/537.36';
+//存储带检索的作品id
+var workList = [];
+//存储作者的作品目录页的url
+var pageUrlList = [];
+function Spider(){
+}
+//http的option
+Spider.prototype.opt = {
 
-function start(node,config){
-	var id = node.id;
-	var url = FELLOW_URL + id + '&p=1';
-	//https请求网页
-	got(url, config.opt)
-	.then(function(response){
-		var html = response.body;
-		var $ = cheerio.load(html);
-		//解析网页，获取当前用户的关注的总人数等信息
-		var lis = $('#search-result').first().find('.members .usericon a');
-		node.total = parseInt($('#page-bookmark-user .layout-column-2 .column-header span').text());
-		node.maxPage = Math.ceil(node.total/MAX_PER_PAGE);
-		//获取首页关注的所有用户id
-		var data = '';
-		lis.each(function(index, ele){ 
-			var userId = parseInt($(this).attr('data-user_id'));
-			//利用bloom过滤器筛选
-			if(!config.bloom.test(userId)){
-				data += userId + ' ';
-				config.bloom.add(userId);
-			}
-
-		});
-		//将数据存储进入users.txt
-		fs.appendFile('./data/users.txt',data, 'utf-8',function(err){
+};
+/**
+ * [getPictureDetail 爬取图片信息]
+ * @param  {[type]} id [图片id]
+ * @return {[type]}    [description]
+ */
+Spider.prototype.getPictureDetail = function(id){
+	var that = this;
+	console.log('start');
+	var picture = new Picture(id);
+	Promise.all([got(PICINFO_URL + picture.id, that.opt)
+		//, got(COLLECTION_URL + picture.id)
+		]).then(function(values){
+		picture.setInfo(values[0].body);
+		//console.log(values[1]);
+		//picture.setCollection(values[1].body);
+		var data = picture.id + ' ' + picture.name + ' ' + picture.size + ' ' + picture.tags + ' ' + picture.viewCount + ' ' + picture.approval + ' ' + picture.collectCount + '\r\n';
+		fs.appendFile('./data/' + picture.author + '.txt', data, 'utf-8', function(err){
 			if(err){
-				console.log(id + '关注的' + data + '添加失败！');
+				console.log(picture.id + '作品数据写入失败:' + err);
+			}else{
+				console.log(picture.id + '作品数据写入成功！');
 			}
 		});
-		//若用户没有关注任何人
-		if(node.maxPage === 0){
-			console.log('大佬就是这么自信，从来不关注其他人╭(╯^╰)╮');
-			
-		}
-		//若用户只关注了一页人
-		if(node.maxPage === 1){
-			console.log('哎呀，只有一页关注⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
-			
-		}else{
-			//用户关注了多页人
-			//多页同时开始爬取
-			for(var i = 1; i * MAX_PER_PAGE < node.total; i++){
-				update(i + 1, node, config);
-			}		
-		}
-
-	})
-	.catch(function(err){
-		console.log(err);
+	},function(reason){
+		console.log(reason);
 	});
-}
-function update(p, node, config){
-	var id = node.id;
-	var url = FELLOW_URL + id + '&p=' + p;
-	//请求网页
-	got(url, config.opt)
+};
+
+Spider.prototype.getFirstPageWorks = function(id) {
+	var that = this;
+	got(PICLIST_URL + id,that.opt)
 	.then(function(response){
 		var html = response.body;
 		var $ = cheerio.load(html);
-
-		var lis = $('#search-result').first().find('.members .usericon a');
-		var data = '';
-		//获取关注用户列表
-		lis.each(function(index, ele){ 
-			var userId = parseInt($(this).attr('data-user_id'));
-			if(!config.bloom.test(userId)){
-				data += userId + ' ';
-				config.bloom.add(userId);
-			}
+		var total = /\d*/.exec($('.count-badge').text());
+		$('.work').each(function(index, ele){
+			workList.push(parseInt(/\d+/.exec($(this).attr('href'))));
 		});
-		//存储数据
-		fs.appendFile('./data/users.txt', data, 'utf-8', handle(node));
+		if(total > 20){
+			for(var i = 2; (i - 1) * MAX_PER_PAGE < total; i++){
+				pageUrlList.push(id + '&p=' + i);
+			}
+		}else{
+			console.log('哎呀，只有一页作品⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
+		}
+
+		console.log(workList);
+		console.log(pageUrlList);
+	}).catch(function(err){
+		console.log(err);
+	});
+};
+
+Spider.prototype.getOnePageWorks = function(url){
+	var that = this;
+	got(PICLIST_URL + url,that.opt)
+	.then(function(response){
+		var html = response.body;
+		var $ = cheerio.load(html);
+		var total = /\d*/.exec($('.count-badge').text());
+		var current = parseInt($('li.current').first().text());
+		$('.work').each(function(index, ele){
+			workList.push(parseInt(/\d+/.exec($(this).attr('href'))));
+		});
+		console.log('一页添加完毕');
+		if(current * MAX_PER_PAGE > total){
+			console.log(/\d+/.exec(url) + '作者的作品全部加入待处理队列~O(∩_∩)O~');
+			console.log(workList.length, workList);
+		}
 	})
 	.catch(function(err){
 		console.log(err);
 	});
-}
-function handle(node){
-	return function(err){
-		console.log(node.id,node.count, node.total);
-		node.count++;
-		if(err){
-			console.log(err);
-		}else{
-			//console.log('第' + that.count + '页下载完毕');
-		}
-		if(node.count >= node.maxPage){
-			console.log(node.id + '关注列表下载完毕','最大页数' + node.maxPage, '当前页数' + node.count);
+};
+
+pixivCookie('M201571695@hust.edu.cn','23#224').then(function(cookies){
+	console.log(cookies);
+	Spider.prototype.opt = {
+		headers: {
+			Origin: 'https://www.pixiv.net',
+			'User-Agent': USER_AGENT,
+			'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+			Referer: 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index',
+			'X-Requested-With': 'XMLHttpRequest',
+			'Cookie': (function(){
+				return cookies.map(function(elem){
+					return `${elem.name}=${elem.value}`;
+				}).join('; ');
+			})()
 		}
 	};
-}
+	var test = new Spider();
+	test.getFirstPageWorks('810305');
+	while(true){
+		if(pageUrlList.length !== 0){
+			test.getOnePageWorks(pageUrlList.shift());
+		}else{
+			sleep(3000);
+		}
+		
+	}
+	//test.getPictureDetail('62608067');
+}).catch(function(error){
+	console.log(error);
+});
+

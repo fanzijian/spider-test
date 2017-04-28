@@ -1,37 +1,49 @@
-
+const cheerio = require('cheerio');
 /**
  * [Picture 构造函数]
  * @param {[type]} id   [图片id]
  * @param {[type]} name [图片名称]
  */
-function Picture (id, name){
+function Picture (id){
 	this.id = id;
-	this.name = name;
-	this.tag = '';
-	this.collectors = 0;
-	this.pageviews = 0;
+	this.name = '';
+	this.tags = '';
+	this.size = '';
+	this.collectCount = 0;
+	this.viewCount = 0;
 	this.approval = 0;
+	this.author = '';
 }
 /**
- * [setTag 设置图片Tag]
- * @param {[string]} tag [用空格分隔的字符串]
+ * [setName 设置图片名称]
+ * @param {[type]} name [名称]
  */
-Picture.prototype.setTag = function(tag){
-	this.tag = tag;
+Picture.prototype.setName = function(name){
+	this.name = name;
 };
 /**
- * [setCollectors 设置图片的收藏数量]
- * @param {[num]} collectors [收藏数量]
+ * [setTags 设置图片Tags]
+ * @param {[string]} tags [用空格分隔的字符串]
  */
-Picture.prototype.setCollectors = function(collectors){
-	this.collectors = collectors;
+Picture.prototype.setTags = function(tags){
+	this.tags = tags;
+};
+Picture.prototype.setSize = function(size){
+	this.size = size;
 };
 /**
- * [setPageviews 设置图片的浏览量]
- * @param {[num]} pageviews [浏览量]
+ * [setCollectCount 设置图片的收藏数量]
+ * @param {[num]} collectCount [收藏数量]
  */
-Picture.prototype.setPageviews = function(pageviews){
-	this.pageviews = pageviews;
+Picture.prototype.setCollectCount = function(collectCount){
+	this.collectCount = collectCount;
+};
+/**
+ * [setViewCount 设置图片的浏览量]
+ * @param {[num]} viewCount [浏览量]
+ */
+Picture.prototype.setViewCount = function(viewCount){
+	this.viewCount = viewCount;
 };
 /**
  * [setApproval 设置图片的点赞数量]
@@ -55,32 +67,72 @@ Picture.prototype.getName = function(){
 	return this.name;
 };
 /**
- * [getTag 返回图片Tag]
- * @return {[string]} tag [用空格分隔的字符串]
+ * [getTags 返回图片Tags]
+ * @return {[string]} tags [用空格分隔的字符串]
  */
-Picture.prototype.getTag = function(){
-	return this.tag;
+Picture.prototype.getTags = function(){
+	return this.tags;
+};
+Picture.prototype.getSize = function(){
+	return this.size;
 };
 /**
- * [getCollectors 返回图片的收藏数量]
- * @return {[num]} collectors [收藏数量]
+ * [getCollectCount 返回图片的收藏数量]
+ * @return {[num]} collectCount [收藏数量]
  */
-Picture.prototype.getCollectors = function(){
-	return this.collectors;
+Picture.prototype.getCollectCount = function(){
+	return this.collectCount;
 };
 /**
- * [getPageviews 获取图片的浏览量]
- * @return {[num]} pageviews [浏览量]
+ * [getViewCount 获取图片的浏览量]
+ * @return {[num]} viewCount [浏览量]
  */
 Picture.prototype.getPageviews = function(){
-	return this.pageviews;
+	return this.viewCount;
 };
 /**
- * [getApproval 设置图片的点赞数量]
+ * [getApproval 获取图片的点赞数量]
  * @return {[num]} approval [点赞数量]
  */
 Picture.prototype.getApproval = function(){
 	return this.approval;
+};
+/**
+ * [getName 获取图片名称]
+ * @return {[type]} [图片名称]
+ */
+Picture.prototype.getName = function(){
+	return this.name;
+};
+/**
+ * [setInfo 根据详情网页填充picture的名称，尺寸，tags，浏览量，点赞量等信息]
+ * @param {[type]} html [description]
+ */
+Picture.prototype.setInfo = function(html){
+	var $ = cheerio.load(html);
+	var name = $('div#wrapper h1').first().text();
+	var size = $('#wrapper .meta').first().find('li').first().next().text().trim();
+	
+	var tags = '';
+	$('.work-tags .show-most-popular-illust-by-tag').each(function(index, ele){
+		tags += $(this).text() + ',';
+	});
+	this.name = name;
+	this.size = size;
+	this.tags = tags.slice(0,-1);
+	this.viewCount = parseInt($('#wrapper .view-count').text());
+	this.approval = parseInt($('#wrapper .rated-count').text());
+	this.author = /\d+/.exec($('div#wrapper .tabs a').first().attr('href'));
+};
+/**
+ * [setCollection 根据收藏界面填充收藏量信息]
+ * @param {[type]} html [description]
+ */
+Picture.prototype.setCollection = function(html){
+	var $ = cheerio.load(html);
+	var collectCount = parseInt($('div#wrapper .bookmark-count').text());
+	//console.log($('.count-badge').first());
+	this.collectCount = collectCount;
 };
 
 module.exports = Picture;

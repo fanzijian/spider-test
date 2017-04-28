@@ -5,6 +5,7 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.59 Safari/537.36';
+const USER_AGENT2 = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36';
 const LOGIN_URL = 'http://www.pixiv.net';
 const FELLOW_URL = 'https://www.pixiv.net/bookmark.php?type=user&id=';
 const MAX_PER_PAGE = 48;
@@ -55,7 +56,7 @@ function start(){
 		try {
 			sleep(10000);
 		} catch(e) {
-			console.log('Sleep ERROR:' + e);
+			console.log('Sleep ERROR for i:' + e);
 		}
 		console.log('读取user.txt');
 		fs.readFile('./data/users.txt','utf-8',function(err, buffer){
@@ -79,6 +80,7 @@ function start(){
 								//存在大量未返回请求时，重置http连接，重置未完成的链接数目
 								if(flag > 6) {
 									refreshCookie();
+									sleep(60000);
 									max += 30;
 								}
 								try {
@@ -94,7 +96,6 @@ function start(){
 										break;
 									}
 								}
-
 							}
 							tmp++;
 						}
@@ -106,7 +107,7 @@ function start(){
 							sleep(10000);
 						} catch(e) {
 							//发生错误的时候，重新登录，更新网络连接
-							console.log('Sleep ERROR:' + e);
+							console.log('Sleep ERROR after get new file:' + e);
 							refreshCookie();
 						}
 						break;
