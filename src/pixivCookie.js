@@ -6,11 +6,11 @@ const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/
 const LOGIN_URL = 'http://www.pixiv.net';
 const LOGIN_API_URL = 'https://accounts.pixiv.net/api/login?lang=zh';
 
-const pixivCookie = function(username, password){
+const pixivCookie = function(username, password, agent){
 	return new Promise(function(resolve, reject){
 		const getToken = got(LOGIN_URL, {
 				headers: {
-					'User-Agent': USER_AGENT
+					'User-Agent': agent
 				}
 			})
 			.then(function(response){
@@ -32,7 +32,7 @@ const pixivCookie = function(username, password){
 			got(LOGIN_API_URL, {
 					headers: {
 						Origin: 'https://accounts.pixiv.net',
-						'User-Agent': USER_AGENT,
+						'User-Agent': agent,
 						'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
 						Referer: 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index',
 						'X-Requested-With': 'XMLHttpRequest',
