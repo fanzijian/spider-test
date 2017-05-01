@@ -123,7 +123,7 @@ Picture.prototype.setInfo = function(html){
 	this.tags = tags.slice(0,-1);
 	this.viewCount = parseInt($('#wrapper .view-count').text());
 	this.approval = parseInt($('#wrapper .rated-count').text());
-	this.author = /\d+/.exec($('div#wrapper .tabs a').first().attr('href'));
+	this.author = parseInt(/\d+/.exec($('div#wrapper .tabs a').first().attr('href')));
 };
 /**
  * [setCollection 根据收藏界面填充收藏量信息]
@@ -133,7 +133,7 @@ Picture.prototype.setCollection = function(html){
 	var $ = cheerio.load(html);
 	var collectCount = parseInt($('div#wrapper .bookmark-count').text());
 	
-	//console.log($('.count-badge').first());
+	console.log($('div#wrapper .bookmark-count').text());
 	this.collectCount = collectCount;
 };
 

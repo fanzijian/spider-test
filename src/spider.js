@@ -41,11 +41,10 @@ function getPictureDetail(id){
 	console.log('getPictureDetail');
 	var picture = new Picture(id);
 	Promise.all([got(PICINFO_URL + picture.id, opt)
-		//, got(COLLECTION_URL + picture.id)
+		, got(COLLECTION_URL + picture.id, opt)
 		]).then(function(values){
 		picture.setInfo(values[0].body);
-		//console.log(values[1]);
-		//picture.setCollection(values[1].body);
+		picture.setCollection(values[1].body);
 		var data = picture.id + ' ' + picture.name + ' ' + picture.size + ' ' + picture.tags + ' ' + picture.viewCount + ' ' + picture.approval + ' ' + picture.collectCount + '\r\n';
 		fs.appendFile('./data/' + picture.author + '.txt', data, 'utf-8', function(err){
 			if(err){
