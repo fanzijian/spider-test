@@ -1,4 +1,5 @@
 const cheerio = require('cheerio');
+const got = require('got');
 /**
  * [Picture 构造函数]
  * @param {[type]} id   [图片id]
@@ -131,6 +132,7 @@ Picture.prototype.setInfo = function(html){
 Picture.prototype.setCollection = function(html){
 	var $ = cheerio.load(html);
 	var collectCount = parseInt($('div#wrapper .bookmark-count').text());
+	
 	//console.log($('.count-badge').first());
 	this.collectCount = collectCount;
 };
