@@ -24,7 +24,8 @@ var pageUrlList = [];
 //未处理完毕的作品详情请求数
 var workCount = 0;
 //未处理完毕的作品目录页请求数
-var pageCount = 1;
+var firstPageCount = 1;
+var listPageCount = 0;
 
 var opt = '';
 //记录刷新次数，除三取余得到结果
@@ -84,12 +85,17 @@ function getOnePageWorks(url) {
 				if(current === 1){
 					if( total > 20){
 						for(var i = 2; (i - 1) * MAX_PER_PAGE < total; i++){
-							pageCount++;
+							listPageCount++;
 							pageUrlList.push(id + '&p=' + i);
 						}
 					}else{
 						console.log('哎呀，暴露了只有一页作品⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
 					}
+					//首页爬取完毕
+					firstPageCount--;
+				}else{
+					//首页外的目录页完毕
+					listPageCount--;
 				}
 				console.log('爬完' + /\d+/.exec(url) + '第' + current + '页啦~~');
 				//全部作品统计完毕
@@ -98,12 +104,15 @@ function getOnePageWorks(url) {
 					console.log(workList.length);
 				}
 			}else{
+				//用户首页没有作品
+				firstPageCount--;
 				console.log('说好的，作品呢->_<-');
 			}
 		}else{
+			//用户消失了，那么该首页不存在
+			firstPageCount--;
 			console.log('哎呀呀，作者' + id + '不见了(；′⌒`)');
 		}
-		pageCount--;
 	}).catch(function(err){
 		console.log(err);
 	});
@@ -114,26 +123,31 @@ function getOnePageWorks(url) {
  * @return {[type]} [description]
  */
 function refreshCookie(){
-	flag = ++flag % 3;
-	pixivCookie(email[flag],'23#224', agent[flag]).then(function(cookies){
-		console.log(cookies);
-		opt = {
-			headers: {
-				Origin: 'https://www.pixiv.net',
-				'User-Agent': agent[flag],
-				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-				Referer: 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index',
-				'X-Requested-With': 'XMLHttpRequest',
-				'Cookie': (function(){
-					return cookies.map(function(elem){
-						return `${elem.name}=${elem.value}`;
-					}).join('; ');
-				})()
-			}
-		};
-	}).catch(function(error){
-		console.log(error);
-	});
+	try {
+		flag = ++flag % 3;
+		pixivCookie(email[flag],'23#224', agent[flag]).then(function(cookies){
+			console.log(cookies);
+			opt = {
+				headers: {
+					Origin: 'https://www.pixiv.net',
+					'User-Agent': agent[flag],
+					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+					Referer: 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index',
+					'X-Requested-With': 'XMLHttpRequest',
+					'Cookie': (function(){
+						return cookies.map(function(elem){
+							return `${elem.name}=${elem.value}`;
+						}).join('; ');
+					})()
+				}
+			};
+		}).catch(function(error){
+			console.log(error);
+		});
+	} catch(e){
+		console.log('刷新错误' + e);
+	}
+
 }
 //主程序
 pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies){
@@ -152,15 +166,15 @@ pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies
 			})()
 		}
 	};
-	getOnePageWorks('204724&p=1');
+	getOnePageWorks('3160026&p=1');
 	sleep(5000);
 	while(true){
 		try {
 			//生产待查询目录页,同时也生产少量待查询作品
-			if(pageCount <= 10){
+			if(listPageCount < 3 || workCount === 0 || listPageCount === 0){
 				if(count < Users.length){
 					getOnePageWorks(Users[count++] + '&p=1');
-					pageCount++;
+					firstPageCount++;
 				}else{
 					console.log('sleep 5s');
 					try {
@@ -179,12 +193,13 @@ pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies
 			}
 			//消费待查询目录页，生产待查询作品
 			//当待处理作品超过1000的时候，停止生产
-			if(pageCount > 0 && workCount < 1000){
+			if(listPageCount > 0 && workCount < 60){
 				var url = pageUrlList.shift();
 				if(url){
 					getOnePageWorks(url);
 				}else{
-					console.log('url Err');
+					console.log('url Err,listPageCount:' + listPageCount + 'firstPageCount:' + firstPageCount + 'workCount:' + workCount);
+					console.log(count);
 					sleep(1000);
 				}
 			}
@@ -230,7 +245,7 @@ pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies
 		} catch(e){
 			console.log('全局错误：' + e);
 			try {
-				sleep(30000);
+				sleep(10000);
 				refreshCookie();
 			} catch(e){
 				console.log('refreshCookie ERR!--4' + e);

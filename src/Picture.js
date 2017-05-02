@@ -133,7 +133,7 @@ Picture.prototype.setCollection = function(html){
 	var $ = cheerio.load(html);
 	var collectCount = parseInt($('div#wrapper .bookmark-count').text());
 	
-	console.log($('div#wrapper .bookmark-count').text());
+	//console.log($('div#wrapper .bookmark-count').text());
 	this.collectCount = collectCount;
 };
 
