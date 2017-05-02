@@ -73,14 +73,14 @@ function getPictureDetail(id){
 function getOnePageWorks(url) {
 	console.log('getOnePageWorks');
 	var id = url.split('&p=')[0];
+	var p = parseInt(url.split('&p=')[1]);
 	got(PICLIST_URL + url,opt)
 	.then(function(response){
 		var html = response.body;
 		var $ = cheerio.load(html);
 
 		var total = parseInt(/\d*/.exec($('.count-badge').text()));
-		var current = parseInt($('li.current').first().text()) ? parseInt($('li.current').first().text()): 1;
-
+		var current = p;
 		//防止没有作品引起的undefined带来的错误
 		if(typeof total === "number"){
 			if(total !== 0){
@@ -96,11 +96,6 @@ function getOnePageWorks(url) {
 					}else{
 						console.log('哎呀，暴露了只有一页作品⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
 					}
-					//首页爬取完毕
-					firstPageCount--;
-				}else{
-					//首页外的目录页完毕
-					listPageCount--;
 				}
 				console.log('爬完' + /\d+/.exec(url) + '第' + current + '页啦~~');
 				//全部作品统计完毕
@@ -110,16 +105,23 @@ function getOnePageWorks(url) {
 				}
 			}else{
 				//用户首页没有作品
-				firstPageCount--;
 				console.log('说好的，作品呢->_<-');
 			}
 		}else{
 			//用户消失了，那么该首页不存在
-			firstPageCount--;
 			console.log('哎呀呀，作者' + id + '不见了(；′⌒`)');
 		}
+		if(current ===1) {
+			firstPageCount--;
+		}else{
+			listPageCount--;
+		}
 	}).catch(function(error){
-		firstPageCount--;
+		if(p ===1) {
+			firstPageCount--;
+		}else{
+			listPageCount--;
+		}
 		console.log('首页目录错误返回码：' + error.response.statusCode);
 	});
 }
@@ -175,7 +177,7 @@ pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies
 	sleep(5000);
 	while(true){
 		try {
-			if(workList.length > 100){
+			if(workList.length > 200){
 				emitter.emit('tooManyWorks');
 			}
 			if(pageUrlList.length > 20){
@@ -186,8 +188,16 @@ pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies
 				produceWorks();
 				consumeWorks();
 			}
+			
 			if(listPageCount < 10){
 				producePages();
+			}
+			if(workCount > 100){
+				try {
+					sleep(20000);
+				} catch(e){
+					console.log('sleep Err -2' + e);
+				}	
 			}
 			try {
 				sleep(1000);
@@ -228,7 +238,10 @@ emitter.on('tooManyWorks', function(){
 		consumeWorks();
 	}
 });
-
+/**
+ * [producePages 导入新用户，将其非首页作品目录页加载进入待查询队列]
+ * @return {[type]} [description]
+ */
 function producePages(){
 	if(count < Users.length){
 		getOnePageWorks(Users[count++] + '&p=1');
@@ -237,7 +250,10 @@ function producePages(){
 		console.log('finished');
 	}
 }
-
+/**
+ * [produceWorks 消费待查询队列，生产待查询作品队列]
+ * @return {[type]} [description]
+ */
 function produceWorks(){
 	var url = pageUrlList.shift();
 	if(url){
@@ -249,9 +265,13 @@ function produceWorks(){
 		emitter.emit('noPages');
 	}
 }
-
+/**
+ * [consumeWorks 消费待查询作品]
+ * @return {[type]} [description]
+ */
 function consumeWorks(){
-	for(var i = 0; i < 20; i++){
+	if(workCount < 120){
+		for(var i = 0; i < 20; i++){
 		var picId = workList.pop();
 		//当输入不规范时，跳过该条数据
 		if(typeof picId === 'number'){
@@ -262,6 +282,7 @@ function consumeWorks(){
 			emitter.emit('noWorks');
 			break;
 		}
+		}	
 	}
 	try {
 		sleep(500);
