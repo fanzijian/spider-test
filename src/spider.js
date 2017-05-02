@@ -5,6 +5,8 @@ const Picture = require('./Picture');
 const pixivCookie = require('./pixivCookie');
 const async = require('async');
 const sleep = require('system-sleep');
+var EventEmitter = require('events').EventEmitter;
+var emitter = new EventEmitter();
 const MAX_PER_PAGE = 20;
 //作品列表网址
 const PICLIST_URL = 'https://www.pixiv.net/member_illust.php?id=';
@@ -39,11 +41,14 @@ var email = ['3343158402@qq.com', '3183769090@qq.com', 'M201571695@hust.edu.cn']
  * @return {[type]}    [description]
  */
 function getPictureDetail(id){
-	console.log('getPictureDetail');
 	var picture = new Picture(id);
-	Promise.all([got(PICINFO_URL + picture.id, opt)
-		, got(COLLECTION_URL + picture.id, opt)
+	console.log('getPictureDetail'+ picture.id);
+	console.log('workList.length' + workList.length, 'workCount' + workCount);
+	Promise.all([
+			got(PICINFO_URL + picture.id, opt),
+			got(COLLECTION_URL + picture.id, opt)
 		]).then(function(values){
+		console.log('workCount = ' + workCount);
 		picture.setInfo(values[0].body);
 		picture.setCollection(values[1].body);
 		var data = picture.id + ' ' + picture.name + ' ' + picture.size + ' ' + picture.tags + ' ' + picture.viewCount + ' ' + picture.approval + ' ' + picture.collectCount + '\r\n';
@@ -54,8 +59,10 @@ function getPictureDetail(id){
 				console.log(picture.id + '作品数据写入成功！');
 			}
 		});
+		workCount--;
 	},function(reason){
-		console.log(reason);
+		workCount--;
+		console.log('详情错误返回码：' + reason.response.statusCode);
 	});
 }
 /**
@@ -79,13 +86,11 @@ function getOnePageWorks(url) {
 			if(total !== 0){
 				$('.work').each(function(index, ele){
 					workList.push(parseInt(/\d+/.exec($(this).attr('href'))));
-					workCount++;
 				});
 				//如果是第一次爬该用户的作品目录，那么则将剩余的页数加入待处理队列中
 				if(current === 1){
 					if( total > 20){
 						for(var i = 2; (i - 1) * MAX_PER_PAGE < total; i++){
-							listPageCount++;
 							pageUrlList.push(id + '&p=' + i);
 						}
 					}else{
@@ -113,8 +118,9 @@ function getOnePageWorks(url) {
 			firstPageCount--;
 			console.log('哎呀呀，作者' + id + '不见了(；′⌒`)');
 		}
-	}).catch(function(err){
-		console.log(err);
+	}).catch(function(error){
+		firstPageCount--;
+		console.log('首页目录错误返回码：' + error.response.statusCode);
 	});
 }
 
@@ -124,7 +130,7 @@ function getOnePageWorks(url) {
  */
 function refreshCookie(){
 	try {
-		flag = ++flag % 3;
+		flag = Math.floor(Math.random()*100) % 3;
 		pixivCookie(email[flag],'23#224', agent[flag]).then(function(cookies){
 			console.log(cookies);
 			opt = {
@@ -147,7 +153,6 @@ function refreshCookie(){
 	} catch(e){
 		console.log('刷新错误' + e);
 	}
-
 }
 //主程序
 pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies){
@@ -170,88 +175,97 @@ pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies
 	sleep(5000);
 	while(true){
 		try {
-			//生产待查询目录页,同时也生产少量待查询作品
-			if(listPageCount < 3 || workCount === 0 || listPageCount === 0){
-				if(count < Users.length){
-					getOnePageWorks(Users[count++] + '&p=1');
-					firstPageCount++;
-				}else{
-					console.log('sleep 5s');
-					try {
-						sleep(5000);
-					} catch(e){
-						console.log('无可添加id，ERR:' + e);
-						try {
-							sleep(5000);
-							refreshCookie();
-						} catch(e){
-							console.log('refreshCookie ERR!--1' + e);
-						}
-					}
-					console.log('没有可以添加的用户id啦╭(╯^╰)╮');
-				}
+			if(workList.length > 100){
+				emitter.emit('tooManyWorks');
 			}
-			//消费待查询目录页，生产待查询作品
-			//当待处理作品超过1000的时候，停止生产
-			if(listPageCount > 0 && workCount < 60){
-				var url = pageUrlList.shift();
-				if(url){
-					getOnePageWorks(url);
-				}else{
-					console.log('url Err,listPageCount:' + listPageCount + 'firstPageCount:' + firstPageCount + 'workCount:' + workCount);
-					console.log(count);
-					sleep(1000);
-				}
+			if(pageUrlList.length > 20){
+				emitter.emit('tooManyPages');
 			}
-			//消费待查询作品
-			if(workCount > 0){
-				//一次消费一页的数据
-				for(var i = 0; i < 20; i++){
-					var picId = workList.pop();
-					//当输入不规范时，跳过该条数据
-					if(typeof picId === 'number'){
-						getPictureDetail(picId);
-						workCount--;
-					}else{
-						console.log('产能不足~~:' + picId);
-						try {
-							sleep(1000);
-						} catch(e){
-							console.log('产能不足，ERR:' + e);
-							try {
-								sleep(5000);
-								refreshCookie();
-							} catch(e){
-								console.log('refreshCookie ERR!--2' + e);
-							}
-						}
-					}
-				}
-			}else{
-				//由于是异步，待查询作品不能马上就生产出来，所有当等于0的时候，就等待3s
-				console.log('作品生产中，请耐心等待！');
-				try {
-					sleep(3000);
-				} catch(e){
-					console.log('待消费列表为空，ERR:' + e);
-					try {
-						sleep(5000);
-						refreshCookie();
-					} catch(e){
-						console.log('refreshCookie ERR!--3' + e);
-					}
-				}
+
+			if(workCount < 30){
+				produceWorks();
+				consumeWorks();
+			}
+			if(listPageCount < 10){
+				producePages();
+			}
+			try {
+				sleep(1000);
+			} catch(e){
+				refreshCookie();
+				console.log('sleep Err -1' + e);
 			}
 		} catch(e){
-			console.log('全局错误：' + e);
-			try {
+			try{
 				sleep(10000);
-				refreshCookie();
 			} catch(e){
-				console.log('refreshCookie ERR!--4' + e);
+				console.log('sleep ERR -5');
 			}
+			refreshCookie();
+			console.log('全局错误：' + e);
 		}
 	}
 }).catch(function(error){
 	console.log(error);
 });
+//待查询作品过少
+emitter.on('noWorks', function(){
+	produceWorks();
+});
+//待查询页面过少
+emitter.on('noPages', function(){
+	producePages();
+});
+//待查询页面过多
+emitter.on('tooManyPages', function(){
+	while (pageUrlList.length > 5) {
+		produceWorks();
+	}
+});
+//待查询作品过多
+emitter.on('tooManyWorks', function(){
+	while(workList.length > 20){
+		consumeWorks();
+	}
+});
+
+function producePages(){
+	if(count < Users.length){
+		getOnePageWorks(Users[count++] + '&p=1');
+		firstPageCount++;
+	}else{
+		console.log('finished');
+	}
+}
+
+function produceWorks(){
+	var url = pageUrlList.shift();
+	if(url){
+		getOnePageWorks(url);
+		listPageCount++;
+	}else{
+		console.log('url Err,listPageCount:' + listPageCount + 'firstPageCount:' + firstPageCount + 'workCount:' + workCount);
+		console.log(count);
+		emitter.emit('noPages');
+	}
+}
+
+function consumeWorks(){
+	for(var i = 0; i < 20; i++){
+		var picId = workList.pop();
+		//当输入不规范时，跳过该条数据
+		if(typeof picId === 'number'){
+			getPictureDetail(picId);
+			workCount++;
+		}else{
+			console.log('产能不足~~:' + picId);
+			emitter.emit('noWorks');
+			break;
+		}
+	}
+	try {
+		sleep(500);
+	} catch(e){
+		console.log('sleep ERR - 4' + e);
+	}
+}
