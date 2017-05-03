@@ -16,7 +16,6 @@ var config = {
 	bloom: new BloomFilter.BloomFilter( 200 * 1024 * 1024 * 8, 8),
 	pre: 0
 };
-//var bloom = new BloomFilter.BloomFilter( 200 * 1024 * 1024 * 8, 8);
 
 var SpiderPixiv = require('./SpiderPixiv');
 
