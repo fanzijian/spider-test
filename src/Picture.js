@@ -6,7 +6,7 @@ const got = require('got');
  * @param {[type]} name [图片名称]
  */
 function Picture (id){
-	this.id = id;
+	this.id = parseInt(id);
 	this.name = '';
 	this.tags = '';
 	this.size = '';
@@ -116,7 +116,7 @@ Picture.prototype.setInfo = function(html){
 	
 	var tags = '';
 	$('.work-tags .show-most-popular-illust-by-tag').each(function(index, ele){
-		tags += $(this).text() + ',';
+		tags += $(this).text().trim() + ',';
 	});
 	this.name = name;
 	this.size = size;
