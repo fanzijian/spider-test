@@ -5,7 +5,9 @@ const Picture = require('./Picture');
 const pixivCookie = require('./pixivCookie');
 const sleep = require('system-sleep');
 const BloomFilter = require('bloomfilter');
+
 var bloom = new BloomFilter.BloomFilter( 200 * 1024 * 1024 * 8, 8);
+
 const MAX_PER_PAGE = 20;
 //作品列表网址
 const PICLIST_URL = 'https://www.pixiv.net/member_illust.php?id=';
@@ -15,20 +17,22 @@ const PICINFO_URL = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_
 const COLLECTION_URL = 'https://www.pixiv.net/bookmark_detail.php?illust_id=';
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.59 Safari/537.36';
 const USER_AGENT2 = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36';
+var bloom = new BloomFilter.BloomFilter( 200 * 1024 * 1024 * 8, 8);
 var Users = fs.readFileSync('./data/users.txt','utf-8').split(' ');
-
 //当前检索的用户数
 var count = 0;
 //存储待检索的作品id
 var workList = [];
+
 //存储作者的作品目录页的url
 var pageUrlList = [];
+
 //未处理完毕的作品详情请求数
 var workCount = 0;
 //未处理完毕的作品目录页请求数
 var firstPageCount = 0;
 var listPageCount = 0;
-
+var isFresned = 1;
 var opt = '';
 //记录刷新次数，除三取余得到结果
 var flag = 0;
@@ -43,10 +47,13 @@ var email = ['3343158402@qq.com', '3183769090@qq.com', 'M201571695@hust.edu.cn']
 function getPictureDetail(id){
 	var picture = new Picture(id);
 	console.log('getPictureDetail'+ picture.id);
+
+	//设置定时程序，当30s后如果这条请求尚未被处理，那么重新发送该请求
 	console.log('workList.length' + workList.length, 'workCount' + workCount);
 	var timer = setTimeout(function(){ 
 		getPictureDetail(picture.id);
 	}, 30000);
+
 	Promise.all([
 			got(PICINFO_URL + picture.id, opt),
 			got(COLLECTION_URL + picture.id, opt)
@@ -69,6 +76,7 @@ function getPictureDetail(id){
 		}
 	},function(reason){
 		if(!bloom.test(picture.id)){
+			clearTimeout(timer);
 			bloom.add(picture.id);
 			workCount--;
 			console.log('详情错误返回码：' + reason.response.statusCode);
@@ -152,8 +160,10 @@ function getOnePageWorks(url) {
  * @return {[type]} [description]
  */
 function refreshCookie(){
-	try {
-		flag = Math.floor(Math.random()*100) % 3;
+	if(isFresned === 1){
+		//flag = Math.floor(Math.random()*100) % 3;
+		flag = ++flag % 3;
+		isFresned = 0;
 		pixivCookie(email[flag],'23#224', agent[flag]).then(function(cookies){
 			console.log(cookies);
 			opt = {
@@ -168,16 +178,16 @@ function refreshCookie(){
 							return `${elem.name}=${elem.value}`;
 						}).join('; ');
 					})()
-				}
+				},
+				agent: false
 			};
+			isFresned = 1;
 		}).catch(function(error){
+			isFresned = 1;
 			console.log(error);
 		});
-	} catch(e){
-		console.log('刷新错误' + e);
 	}
 }
-
 
 /**
  * [producePages 导入新用户，将其非首页作品目录页加载进入待查询队列]
@@ -190,6 +200,11 @@ function producePages(){
 	}else{
 		process.send('finished');
 		console.log('finished');
+	}
+	try {
+		sleep(500);
+	} catch(e){
+		console.log('sleep Err');
 	}
 }
 /**
@@ -226,7 +241,7 @@ function consumeWorks(){
 	try {
 		sleep(500);
 	} catch(e){
-		console.log('sleep ERR - 4' + e);
+		console.log('sleep Err');
 	}
 }
 
