@@ -53,6 +53,15 @@
 可以考虑用Cluster模块来尝试
 > * 2017-05-04 19:48
 
+目前感觉，链接经常出问题的原因：ETIMEDOUT是因为node内部处理请求的队列默认值为5，导致过多请求的时候，就容易被挂起，参考
+[default pool size = 5](http://stackoverflow.com/questions/8515706/node-js-0-4-10-http-get-request-etimedout-connection-timed-out-frequentl)
+
+[agent设置为false](https://nodejs.org/docs/latest/api/http.html#http_http_get_options_callback)的方式试过了，行不通,但是有一点效果
+
+设置[process.env.UV_THREADPOOL_SIZE = 128](http://stackoverflow.com/questions/24320578/node-js-get-request-etimedout-esockettimedout)也不行
+
+非常值得参考的一个[爬虫项目](https://github.com/bda-research/node-crawler/blob/master/lib/crawler.js)
+
 ## 入库存储
 
 ## 建立网站搜索查找

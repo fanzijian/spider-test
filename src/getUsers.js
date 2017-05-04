@@ -33,7 +33,8 @@ pixivCookie('M201571695@hust.edu.cn','23#224').then(function(cookies){
 					return `${elem.name}=${elem.value}`;
 				}).join('; ');
 			})()
-		}
+		},
+		agent: false;
 	};
 	start();
 	
@@ -139,7 +140,8 @@ function refreshCookie(){
 						return `${elem.name}=${elem.value}`;
 					}).join('; ');
 				})()
-			}
+			},
+			agent: false;
 		};
 	}).catch(function(error){
 		console.log(error);

@@ -37,7 +37,7 @@ var opt = '';
 //记录刷新次数，除三取余得到结果
 var flag = 0;
 //备用agent与email
-var agent = [USER_AGENT, USER_AGENT2, USER_AGENT2];
+var agents = [USER_AGENT, USER_AGENT2, USER_AGENT2];
 var email = ['3343158402@qq.com', '3183769090@qq.com', 'M201571695@hust.edu.cn'];
 /**
  * [getPictureDetail 爬取图片信息]
@@ -64,7 +64,7 @@ function getPictureDetail(id){
 			console.log('workCount = ' + workCount);
 			picture.setInfo(values[0].body);
 			picture.setCollection(values[1].body);
-			var data = picture.id + ' ' + picture.name + ' ' + picture.size + ' ' + picture.tags + ' ' + picture.viewCount + ' ' + picture.approval + ' ' + picture.collectCount + '\r\n';
+			var data = picture.id + ' ' + picture.name + ' ' + picture.time + ' ' +  picture.size + ' ' + picture.tags + ' ' + picture.viewCount + ' ' + picture.approval + ' ' + picture.collectCount + '\r\n';
 			fs.appendFile('./data/' + picture.author + '.txt', data, 'utf-8', function(err){
 				if(err){
 					console.log(picture.id + '作品数据写入失败:' + err);
@@ -79,6 +79,11 @@ function getPictureDetail(id){
 			clearTimeout(timer);
 			bloom.add(picture.id);
 			workCount--;
+			fs.appendFile('./ErrLog.txt', picture.id + ' 资源请求失败:' + reason + '\r\n', 'utf-8', function(err){
+				if(err){
+					console.log('写入错误日志失败！');
+				}
+			});
 			console.log('详情错误返回码：' + reason.response.statusCode);
 		}
 	});
@@ -150,6 +155,11 @@ function getOnePageWorks(url) {
 			}else{
 				listPageCount--;
 			}
+			fs.appendFile('./ErrLog.txt', url + ' 资源请求失败:' + error + '\r\n', 'utf-8', function(err){
+				if(err){
+					console.log('写入错误日志失败！');
+				}
+			});
 			console.log('首页目录错误返回码：' + error.response.statusCode);
 		}
 	});
@@ -164,12 +174,12 @@ function refreshCookie(){
 		//flag = Math.floor(Math.random()*100) % 3;
 		flag = ++flag % 3;
 		isFresned = 0;
-		pixivCookie(email[flag],'23#224', agent[flag]).then(function(cookies){
+		pixivCookie(email[flag],'23#224', agents[flag]).then(function(cookies){
 			console.log(cookies);
 			opt = {
 				headers: {
 					Origin: 'https://www.pixiv.net',
-					'User-Agent': agent[flag],
+					'User-Agent': agents[flag],
 					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
 					Referer: 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index',
 					'X-Requested-With': 'XMLHttpRequest',
@@ -246,8 +256,9 @@ function consumeWorks(){
 }
 
 process.on('message',function(startId){
+	console.log(startId);
 	startId = parseInt(startId);
-	Users = Users.slice(startId, startId + 50000);
+	Users = Users.slice(startId, startId + 1000);
 	//主程序
 	pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies){
 		console.log(cookies);
@@ -265,8 +276,6 @@ process.on('message',function(startId){
 				})()
 			}
 		};
-		// getOnePageWorks('3160026&p=1');
-		// sleep(5000);
 		while(true){
 			try {
 				//一个用户的作品全部爬取完毕，增加新用户
