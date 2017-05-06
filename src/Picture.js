@@ -123,11 +123,11 @@ Picture.prototype.setInfo = function(html){
 	var time = $('#wrapper .meta').first().find('li').first().text().trim();
 	var tags = '';
 	$('.work-tags .show-most-popular-illust-by-tag').each(function(index, ele){
-		tags += $(this).text().trim() + ',';
+		tags += $(this).text().trim().replace(' ', '-') + ',';
 	});
 	this.name = name;
 	this.size = size;
-	this.time = time;
+	this.time = time.replace(' ','-');
 	this.tags = tags.slice(0,-1);
 	this.viewCount = parseInt($('#wrapper .view-count').text());
 	this.approval = parseInt($('#wrapper .rated-count').text());
