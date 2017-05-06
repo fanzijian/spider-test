@@ -67,7 +67,7 @@ emitter.on('getWork', function(){
 
 emitter.on('getCatalog', function(){
 	if(count < Users.length){
-		getOnePageWorks(Users[count++] + '&p=1');
+		getOnePageWorks({url: Users[count++] + '&p=1', count: 0});
 		firstPageCount++;
 	}
 });
@@ -87,7 +87,7 @@ emitter.on('getWorkList', function(){
 			setTimeout(function(){
 				emitter.emit('getCatalog');
 			}, 1000);
-			if(workCount === 0 && count Users.length === count){
+			if(workCount === 0 && Users.length === count){
 				return ;
 			}
 		}
@@ -101,14 +101,25 @@ emitter.on('getWorkList', function(){
  * @param  {[type]} id [图片id]
  * @return {[type]}    [description]
  */
-function getPictureDetail(id){
+function getPictureDetail(obj){
+	if(obj.count > 3) {
+		fs.appendFile('./ErrLog.txt', obj.id + '作品资源请求3次失败' + '\r\n', 'utf-8', function(err){
+			if(err){
+				console.log('写入错误日志失败！');
+			}
+		});
+		return ;
+	}else{
+		obj.count++;
+	}
+	var id = obj.id;
 	var picture = new Picture(id);
 	console.log('getPictureDetail'+ picture.id);
 
 	//设置定时程序，当30s后如果这条请求尚未被处理，那么重新发送该请求
 	console.log('workList.length' + workList.length, 'workCount' + workCount);
 	var timer = setTimeout(function(){ 
-		getPictureDetail(picture.id);
+		getPictureDetail(obj);
 	}, 30000);
 	Promise.all([
 			got(PICINFO_URL + picture.id, opt),
@@ -135,13 +146,13 @@ function getPictureDetail(id){
 			clearTimeout(timer);
 			bloom.add(picture.id);
 			workCount--;
-			fs.appendFile('./ErrLog.txt', picture.author + '的' + picture.id + '作品资源请求失败:' + reason + '\r\n', 'utf-8', function(err){
-				if(err){
-					console.log('写入错误日志失败！');
-				}
-			});
 			console.log('详情错误返回码：' + reason.response.statusCode);
 		}
+		fs.appendFile('./ErrLog.txt', picture.author + '的' + picture.id + '作品资源请求失败:' + reason + '\r\n', 'utf-8', function(err){
+			if(err){
+				console.log('写入错误日志失败！');
+			}
+		});
 	});
 }
 /**
@@ -149,12 +160,23 @@ function getPictureDetail(id){
  * @param  {[type]} url [目录页url]
  * @return {[type]}     [description]
  */
-function getOnePageWorks(url) {
+function getOnePageWorks(obj) {
+	if(obj.count > 3) {
+		fs.appendFile('./ErrLog.txt', obj.url + '目录资源请求3次失败' + '\r\n', 'utf-8', function(err){
+			if(err){
+				console.log('写入错误日志失败！');
+			}
+		});
+		return ;
+	}else{
+		obj.count++;
+	}
+	var url = obj.url;
 	console.log('getOnePageWorks' + url);
 	var id = url.split('&p=')[0];
 	var p = parseInt(url.split('&p=')[1]);
 	var timer = setTimeout(function(){ 
-		getOnePageWorks(url);
+		getOnePageWorks(obj);
 	}, 30000);
 	got(PICLIST_URL + url,opt)
 	.then(function(response){
@@ -170,13 +192,13 @@ function getOnePageWorks(url) {
 			if(typeof total === "number"){
 				if(total !== 0){
 					$('.work').each(function(index, ele){
-						workList.push(parseInt(/\d+/.exec($(this).attr('href'))));
+						workList.push({id: parseInt(/\d+/.exec($(this).attr('href'))), count: 0});
 					});
 					//如果是第一次爬该用户的作品目录，那么则将剩余的页数加入待处理队列中
 					if(current === 1){
 						if( total > 20){
 							for(var i = 2; (i - 1) * MAX_PER_PAGE < total; i++){
-								pageUrlList.push(id + '&p=' + i);
+								pageUrlList.push({url:id + '&p=' + i, count: 0});
 							}
 						}else{
 							console.log('哎呀，暴露了只有一页作品⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
@@ -211,13 +233,13 @@ function getOnePageWorks(url) {
 			}else{
 				listPageCount--;
 			}
-			fs.appendFile('./ErrLog.txt', url + '目录资源请求失败:' + error + '\r\n', 'utf-8', function(err){
-				if(err){
-					console.log('写入错误日志失败！');
-				}
-			});
 			console.log('首页目录错误返回码：' + error.response.statusCode);
 		}
+		fs.appendFile('./ErrLog.txt', url + '目录资源请求失败:' + error + '\r\n', 'utf-8', function(err){
+			if(err){
+				console.log('写入错误日志失败！');
+			}
+		});
 	});
 }
 
