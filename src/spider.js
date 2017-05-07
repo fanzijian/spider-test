@@ -52,7 +52,7 @@ emitter.on('getWork', function(){
 		if(workList.length !== 0){
 			var picId = workList.pop();
 			if(typeof picId !== 'undefined'){
-				getPictureDetail(picId);
+				setTimeout(function(){getPictureDetail(picId)});
 				workCount++;
 			}
 		}
@@ -62,28 +62,28 @@ emitter.on('getWork', function(){
 	}
 	setTimeout(function(){
 		emitter.emit('getWork');
-	}, 50);
+	}, 20);
 });
 
 emitter.on('getCatalog', function(){
 	if(count < Users.length){
-		getOnePageWorks({url: Users[count++] + '&p=1', count: 0});
+		setTimeout(function(){getOnePageWorks({url: Users[count++] + '&p=1', count: 0})});
 		firstPageCount++;
 	}
 });
 
 emitter.on('getWorkList', function(){
-	if(listPageCount < 10 && workCount < 100 && workList.length < 100){
+	if(listPageCount < 5 && workCount < 50 && workList.length < 100){
 		//是否添加新的作品
 		if(pageUrlList.length !== 0){
 			var url = pageUrlList.pop();
 			if(typeof url !== 'undefined'){
-				getOnePageWorks(url);
+				setTimeout(function(){getOnePageWorks(url)});
 				listPageCount++;
 			}
 		}
 		//是否添加新的用户进入待处理列表
-		if(pageUrlList.length === 0 && workList.length === 0 && firstPageCount < 1 && listPageCount < 1 && workCount < 20){
+		if(pageUrlList.length < 5 && firstPageCount <= 1){
 			setTimeout(function(){
 				emitter.emit('getCatalog');
 			}, 1000);
@@ -102,25 +102,28 @@ emitter.on('getWorkList', function(){
  * @return {[type]}    [description]
  */
 function getPictureDetail(obj){
-	if(obj.count > 3) {
+	if(obj.count >= 3) {
 		fs.appendFile('./ErrLog.txt', obj.id + '作品资源请求3次失败' + '\r\n', 'utf-8', function(err){
 			if(err){
 				console.log('写入错误日志失败！');
 			}
 		});
+		workCount--;
 		return ;
 	}else{
 		obj.count++;
 	}
 	var id = obj.id;
 	var picture = new Picture(id);
-	console.log('getPictureDetail'+ picture.id);
+	//console.log('getPictureDetail'+ picture.id);
 
 	//设置定时程序，当30s后如果这条请求尚未被处理，那么重新发送该请求
 	console.log('workList.length' + workList.length, 'workCount' + workCount);
-	var timer = setTimeout(function(){ 
-		getPictureDetail(obj);
-	}, 30000);
+	var timer = setTimeout(function(){
+		if(!bloom.test(obj.id)){
+			getPictureDetail(obj);
+		}
+	}, 20000);
 	Promise.all([
 			got(PICINFO_URL + picture.id, opt),
 			got(COLLECTION_URL + picture.id, opt)
@@ -129,6 +132,10 @@ function getPictureDetail(obj){
 			clearTimeout(timer);
 			bloom.add(picture.id);
 			console.log('workCount = ' + workCount);
+			// var data1 = recreateObjectAndMaybeGcCollect(values[0].body);
+			// var data2 = recreateObjectAndMaybeGcCollect(values[1].body);
+			// picture.setInfo(data1);
+			// picture.setCollection(data2);
 			picture.setInfo(values[0].body);
 			picture.setCollection(values[1].body);
 			var data = picture.id + ' ' + picture.name + ' ' + picture.time + ' ' +  picture.size + ' ' + picture.tags + ' ' + picture.viewCount + ' ' + picture.approval + ' ' + picture.collectCount + '\r\n';
@@ -161,28 +168,37 @@ function getPictureDetail(obj){
  * @return {[type]}     [description]
  */
 function getOnePageWorks(obj) {
-	if(obj.count > 3) {
+
+	var url = obj.url;
+	var id = url.split('&p=')[0];
+	var p = parseInt(url.split('&p=')[1]);
+	if(obj.count >= 3) {
 		fs.appendFile('./ErrLog.txt', obj.url + '目录资源请求3次失败' + '\r\n', 'utf-8', function(err){
 			if(err){
 				console.log('写入错误日志失败！');
 			}
 		});
+		if(p ===1) {
+			firstPageCount--;
+		}else{
+			listPageCount--;
+		}
 		return ;
 	}else{
 		obj.count++;
 	}
-	var url = obj.url;
 	console.log('getOnePageWorks' + url);
-	var id = url.split('&p=')[0];
-	var p = parseInt(url.split('&p=')[1]);
 	var timer = setTimeout(function(){ 
-		getOnePageWorks(obj);
-	}, 30000);
+		if(!bloom.test(obj.url)){
+			getOnePageWorks(obj);
+		}
+	}, 20000);
 	got(PICLIST_URL + url,opt)
 	.then(function(response){
 		if(!bloom.test(url)){
 			clearTimeout(timer);
 			bloom.add(url);
+			//var html = recreateObjectAndMaybeGcCollect(response.body);
 			var html = response.body;
 			var $ = cheerio.load(html);
 
@@ -278,9 +294,8 @@ function refreshCookie(){
 }
 
 process.on('message',function(startId){
-	console.log(startId);
-	startId = parseInt(startId);
-	Users = Users.slice(startId, startId + 1000);
+	//startId = parseInt(0);
+	Users = Users.slice(startId, startId + 2000);
 	//主程序
 	pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies){
 		console.log(cookies);
@@ -304,3 +319,21 @@ process.on('message',function(startId){
 		console.log(error);
 	});
 });
+
+// Return a copy of the given object, taking a predictable amount of space.
+function recreateObject(plainOldDataObject) {
+  return JSON.parse(JSON.stringify(plainOldDataObject));
+}
+
+function maybeGcCollect() {
+  if (typeof(global.gc) === 'function') {
+    global.gc();
+  }
+}
+
+// And if you really must make one function that does two things:
+function recreateObjectAndMaybeGcCollect(plainOldDataObject) {
+  var ret = recreateObject(plainOldDataObject);
+  maybeGcCollect();
+  return ret;
+}
