@@ -52,8 +52,10 @@ emitter.on('getWork', function(){
 		if(workList.length !== 0){
 			var picId = workList.pop();
 			if(typeof picId !== 'undefined'){
-				setTimeout(function(){getPictureDetail(picId)});
-				workCount++;
+				setTimeout(function(){
+					getPictureDetail(picId);
+				});
+				workCount += 2;;
 			}
 		}
 		if(workCount === 0 && workList.length === 0 && listPageCount === 0 && pageUrlList.length === 0 && count === Users.length){
@@ -67,7 +69,9 @@ emitter.on('getWork', function(){
 
 emitter.on('getCatalog', function(){
 	if(count < Users.length){
-		setTimeout(function(){getOnePageWorks({url: Users[count++] + '&p=1', count: 0})});
+		setTimeout(function(){
+			getOnePageWorks(Users[count++] + '&p=1');
+		});
 		firstPageCount++;
 	}
 });
@@ -78,7 +82,9 @@ emitter.on('getWorkList', function(){
 		if(pageUrlList.length !== 0){
 			var url = pageUrlList.pop();
 			if(typeof url !== 'undefined'){
-				setTimeout(function(){getOnePageWorks(url)});
+				setTimeout(function(){
+					getOnePageWorks(url);
+				});
 				listPageCount++;
 			}
 		}
@@ -101,104 +107,71 @@ emitter.on('getWorkList', function(){
  * @param  {[type]} id [图片id]
  * @return {[type]}    [description]
  */
-function getPictureDetail(obj){
-	if(obj.count >= 3) {
-		fs.appendFile('./ErrLog.txt', obj.id + '作品资源请求3次失败' + '\r\n', 'utf-8', function(err){
-			if(err){
-				console.log('写入错误日志失败！');
-			}
-		});
-		workCount--;
-		return ;
-	}else{
-		obj.count++;
-	}
-	var id = obj.id;
-	var picture = new Picture(id);
-	//console.log('getPictureDetail'+ picture.id);
+function getPictureDetail(id){
 
-	//设置定时程序，当30s后如果这条请求尚未被处理，那么重新发送该请求
-	console.log('workList.length' + workList.length, 'workCount' + workCount);
-	var timer = setTimeout(function(){
-		if(!bloom.test(obj.id)){
-			getPictureDetail(obj);
-		}
-	}, 20000);
-	Promise.all([
-			got(PICINFO_URL + picture.id, opt),
-			got(COLLECTION_URL + picture.id, opt)
-		]).then(function(values){
-		if(!bloom.test(picture.id)){
-			clearTimeout(timer);
-			bloom.add(picture.id);
-			console.log('workCount = ' + workCount);
-			// var data1 = recreateObjectAndMaybeGcCollect(values[0].body);
-			// var data2 = recreateObjectAndMaybeGcCollect(values[1].body);
-			// picture.setInfo(data1);
-			// picture.setCollection(data2);
-			picture.setInfo(values[0].body);
-			picture.setCollection(values[1].body);
-			var data = picture.id + ' ' + picture.name + ' ' + picture.time + ' ' +  picture.size + ' ' + picture.tags + ' ' + picture.viewCount + ' ' + picture.approval + ' ' + picture.collectCount + '\r\n';
-			fs.appendFile('./data/' + picture.author + '.txt', data, 'utf-8', function(err){
-				if(err){
-					console.log(picture.id + '作品数据写入失败:' + err);
-				}else{
-					console.log(picture.id + '作品数据写入成功！');
-				}
-			});
-			workCount--;
-		}
-	},function(reason){
-		if(!bloom.test(picture.id)){
-			clearTimeout(timer);
-			bloom.add(picture.id);
-			workCount--;
-			console.log('详情错误返回码：' + reason.response.statusCode);
-		}
-		fs.appendFile('./ErrLog.txt', picture.author + '的' + picture.id + '作品资源请求失败:' + reason + '\r\n', 'utf-8', function(err){
-			if(err){
-				console.log('写入错误日志失败！');
-			}
+	got(PICINFO_URL + id, opt)
+	.then(function(res){
+		workCount--;
+		var html = res.body;
+		var $ = cheerio.load(html);
+		var name = $('div#wrapper h1').first().text();
+		var size = $('#wrapper .meta').first().find('li').first().next().text().trim();
+		var time = $('#wrapper .meta').first().find('li').first().text().trim();
+		var tags = '';
+		$('.work-tags .show-most-popular-illust-by-tag').each(function(index, ele){
+			tags += $(this).text().trim().replace(' ', '-') + ',';
+		});
+		time = time.replace(' ','-');
+		tags = tags.slice(0,-1);
+		var viewCount = parseInt($('#wrapper .view-count').text());
+		var approval = parseInt($('#wrapper .rated-count').text());
+		var author = parseInt(/\d+/.exec($('div#wrapper .tabs a').first().attr('href')));
+
+		var data = id + ' ' + name + ' ' + time + ' ' +  size + ' ' + tags + ' ' + viewCount + ' ' + approval + '\r\n';
+		fs.appendFile('./data/detail/' + author + '.txt', data, 'utf-8', function(){
+			
+		});
+	})
+	.catch(function(err){
+		workCount--;
+		fs.appendFile('./ErrLog.txt', id + '作品详情请求失败:' + err + '\r\n', 'utf-8', function(){
+			
 		});
 	});
+
+	got(COLLECTION_URL + id, opt)
+	.then(function(res){
+		workCount--;
+		var html = res.body;
+		var $ = cheerio.load(html);
+		var collectCount = parseInt($('div#wrapper .bookmark-count').text());
+		var author = parseInt(/\d+/.exec($('a[data-user_id]').first().attr('data-user_id')));
+
+		var data = id +' ' + collectCount + '\r\n';
+		fs.appendFile('./data/collection/' + author + '.txt', data, 'utf-8', function(){
+			
+		});
+	})
+	.catch(function(err){
+		workCount--
+		fs.appendFile('./ErrLog.txt', id + '作品收藏请求失败:' + err + '\r\n', 'utf-8', function(){
+			
+		});
+	});
+
 }
 /**
  * [getOnePageWorks 获取用户某页作品]
  * @param  {[type]} url [目录页url]
  * @return {[type]}     [description]
  */
-function getOnePageWorks(obj) {
+function getOnePageWorks(url) {
 
-	var url = obj.url;
 	var id = url.split('&p=')[0];
 	var p = parseInt(url.split('&p=')[1]);
-	if(obj.count >= 3) {
-		fs.appendFile('./ErrLog.txt', obj.url + '目录资源请求3次失败' + '\r\n', 'utf-8', function(err){
-			if(err){
-				console.log('写入错误日志失败！');
-			}
-		});
-		if(p ===1) {
-			firstPageCount--;
-		}else{
-			listPageCount--;
-		}
-		return ;
-	}else{
-		obj.count++;
-	}
-	console.log('getOnePageWorks' + url);
-	var timer = setTimeout(function(){ 
-		if(!bloom.test(obj.url)){
-			getOnePageWorks(obj);
-		}
-	}, 20000);
+
 	got(PICLIST_URL + url,opt)
 	.then(function(response){
-		if(!bloom.test(url)){
-			clearTimeout(timer);
-			bloom.add(url);
-			//var html = recreateObjectAndMaybeGcCollect(response.body);
 			var html = response.body;
 			var $ = cheerio.load(html);
 
@@ -208,53 +181,31 @@ function getOnePageWorks(obj) {
 			if(typeof total === "number"){
 				if(total !== 0){
 					$('.work').each(function(index, ele){
-						workList.push({id: parseInt(/\d+/.exec($(this).attr('href'))), count: 0});
+						workList.push(parseInt(/\d+/.exec($(this).attr('href')) + ''));
 					});
 					//如果是第一次爬该用户的作品目录，那么则将剩余的页数加入待处理队列中
-					if(current === 1){
-						if( total > 20){
-							for(var i = 2; (i - 1) * MAX_PER_PAGE < total; i++){
-								pageUrlList.push({url:id + '&p=' + i, count: 0});
-							}
-						}else{
-							console.log('哎呀，暴露了只有一页作品⁄(⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄');
+					if(current === 1 && total > 20){
+						for(var i = 2; (i - 1) * MAX_PER_PAGE < total; i++){
+							pageUrlList.push(id + '&p=' + i);
 						}
 					}
-					console.log('爬完' + /\d+/.exec(url) + '第' + current + '页啦~~');
-					//全部作品统计完毕
-					if(current * MAX_PER_PAGE >= total){
-						console.log(/\d+/.exec(url) + '作者的作品全部加入待处理队列~O(∩_∩)O~');
-						console.log(workList.length);
-					}
-				}else{
-					//用户首页没有作品
-					console.log('说好的，作品呢->_<-');
 				}
-			}else{
-				//用户消失了，那么该首页不存在
-				console.log('哎呀呀，作者' + id + '不见了(；′⌒`)');
+				console.log('爬完' + /\d+/.exec(url) + '第' + current + '页啦~~');
 			}
+
 			if(current ===1) {
 				firstPageCount--;
 			}else{
 				listPageCount--;
 			}
-		}
 	}).catch(function(error){
-		if(!bloom.test(url)){
-			clearTimeout(timer);
-			bloom.add(url);
-			if(p ===1) {
-				firstPageCount--;
-			}else{
-				listPageCount--;
-			}
-			console.log('首页目录错误返回码：' + error.response.statusCode);
+		if(p ===1) {
+			firstPageCount--;
+		}else{
+			listPageCount--;
 		}
-		fs.appendFile('./ErrLog.txt', url + '目录资源请求失败:' + error + '\r\n', 'utf-8', function(err){
-			if(err){
-				console.log('写入错误日志失败！');
-			}
+		fs.appendFile('./ErrLog.txt', url + '目录资源请求失败:' + error + '\r\n', 'utf-8', function(){
+		
 		});
 	});
 }
@@ -293,9 +244,9 @@ function refreshCookie(){
 	}
 }
 
-process.on('message',function(startId){
-	//startId = parseInt(0);
-	Users = Users.slice(startId, startId + 2000);
+//process.on('message',function(startId){
+	// startId = parseInt(0);
+	// Users = Users.slice(startId, startId + 2000);
 	//主程序
 	pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies){
 		console.log(cookies);
@@ -318,7 +269,7 @@ process.on('message',function(startId){
 	}).catch(function(error){
 		console.log(error);
 	});
-});
+//});
 
 // Return a copy of the given object, taking a predictable amount of space.
 function recreateObject(plainOldDataObject) {
