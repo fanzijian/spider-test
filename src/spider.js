@@ -24,7 +24,8 @@ var Users = fs.readFileSync('./data/users.txt','utf-8').split(' ');
 var count = 0;
 //存储待检索的作品id
 var workList = [];
-
+var errWorkList = new Set();
+var errPageList = new Set();
 //存储作者的作品目录页的url
 var pageUrlList = [];
 
@@ -39,20 +40,19 @@ var opt = '';
 var flag = 0;
 var timeoutMs = 100;
 
-
+var tag = 0;
+var len = 50;
 //备用agent与email
 var agents = [USER_AGENT, USER_AGENT2, USER_AGENT2];
 var email = ['3343158402@qq.com', '3183769090@qq.com', 'M201571695@hust.edu.cn'];
 
-
-
-emitter.on('getWork', function(){
-	if(workCount < 50){
+emitter.on('getWork', ()=>{
+	if(workCount < len){
 		//是否处理该作品
 		if(workList.length !== 0){
 			var picId = workList.pop();
 			if(typeof picId !== 'undefined'){
-				setTimeout(function(){
+				setTimeout(()=>{
 					getPictureDetail(picId);
 				});
 				workCount += 2;;
@@ -61,28 +61,33 @@ emitter.on('getWork', function(){
 		if(workCount === 0 && workList.length === 0 && listPageCount === 0 && pageUrlList.length === 0 && count === Users.length){
 			return ;
 		}
+		tag = 0;
 	}
-	setTimeout(function(){
+	tag++;
+	if(tag > 50 * 300){
+		len *= 2;
+	}
+	setTimeout(()=>{
 		emitter.emit('getWork');
 	}, 20);
 });
 
-emitter.on('getCatalog', function(){
+emitter.on('getCatalog', ()=>{
 	if(count < Users.length){
-		setTimeout(function(){
+		setTimeout(()=>{
 			getOnePageWorks(Users[count++] + '&p=1');
 		});
 		firstPageCount++;
 	}
 });
 
-emitter.on('getWorkList', function(){
-	if(listPageCount < 5 && workCount < 50 && workList.length < 100){
+emitter.on('getWorkList', ()=>{
+	if(listPageCount < 5 && workCount < len && workList.length < 100){
 		//是否添加新的作品
 		if(pageUrlList.length !== 0){
 			var url = pageUrlList.pop();
 			if(typeof url !== 'undefined'){
-				setTimeout(function(){
+				setTimeout(()=>{
 					getOnePageWorks(url);
 				});
 				listPageCount++;
@@ -90,7 +95,7 @@ emitter.on('getWorkList', function(){
 		}
 		//是否添加新的用户进入待处理列表
 		if(pageUrlList.length < 5 && firstPageCount <= 1){
-			setTimeout(function(){
+			setTimeout(()=>{
 				emitter.emit('getCatalog');
 			}, 1000);
 			if(workCount === 0 && Users.length === count){
@@ -98,7 +103,7 @@ emitter.on('getWorkList', function(){
 			}
 		}
 	}
-	setTimeout(function(){
+	setTimeout(()=>{
 		emitter.emit('getWorkList');
 	}, timeoutMs * 10);
 });
@@ -108,10 +113,23 @@ emitter.on('getWorkList', function(){
  * @return {[type]}    [description]
  */
 function getPictureDetail(id){
-
-	got(PICINFO_URL + id, opt)
-	.then(function(res){
+	var timer1 = setTimeout(()=>{
+		errWorkList.add('d' + id);
 		workCount--;
+		fs.appendFile('./ErrLog.txt', id + '作品详情资源请求挂起' + '\r\n', 'utf-8');
+	}, 120000);
+	var timer2 = setTimeout(()=>{
+		errWorkList.add('c' + id);
+		workCount--;
+		fs.appendFile('./ErrLog.txt', id + '作品收藏资源请求挂起' + '\r\n', 'utf-8');
+	},120000);
+	got(PICINFO_URL + id, opt)
+	.then((res)=>{
+		tag = 0;
+		if(!errWorkList.has('d' + id)){
+			clearTimeout(timer1);
+			workCount--;
+		}
 		var html = res.body;
 		var $ = cheerio.load(html);
 		var name = $('div#wrapper h1').first().text();
@@ -128,37 +146,37 @@ function getPictureDetail(id){
 		var author = parseInt(/\d+/.exec($('div#wrapper .tabs a').first().attr('href')));
 
 		var data = id + ' ' + name + ' ' + time + ' ' +  size + ' ' + tags + ' ' + viewCount + ' ' + approval + '\r\n';
-		fs.appendFile('./data/detail/' + author + '.txt', data, 'utf-8', function(){
-			
-		});
+		fs.appendFile('./data/detail/' + author + '.txt', data, 'utf-8');
 	})
-	.catch(function(err){
-		workCount--;
-		fs.appendFile('./ErrLog.txt', id + '作品详情请求失败:' + err + '\r\n', 'utf-8', function(){
-			
-		});
+	.catch((err)=>{
+		if(!errWorkList.has('d' + id)){
+			clearTimeout(timer1);
+			workCount--;
+		}
+		fs.appendFile('./ErrLog.txt', id + '作品详情请求失败:' + err + '\r\n', 'utf-8');
 	});
 
 	got(COLLECTION_URL + id, opt)
-	.then(function(res){
-		workCount--;
+	.then((res)=>{
+		if(!errWorkList.has('c' + id)){
+			clearTimeout(timer2);
+			workCount--;
+		}
 		var html = res.body;
 		var $ = cheerio.load(html);
 		var collectCount = parseInt($('div#wrapper .bookmark-count').text());
 		var author = parseInt(/\d+/.exec($('a[data-user_id]').first().attr('data-user_id')));
 
 		var data = id +' ' + collectCount + '\r\n';
-		fs.appendFile('./data/collection/' + author + '.txt', data, 'utf-8', function(){
-			
-		});
+		fs.appendFile('./data/collection/' + author + '.txt', data, 'utf-8');
 	})
-	.catch(function(err){
-		workCount--
-		fs.appendFile('./ErrLog.txt', id + '作品收藏请求失败:' + err + '\r\n', 'utf-8', function(){
-			
-		});
+	.catch((err)=>{
+		if(!errWorkList.has('c' + id)){
+			clearTimeout(timer2);
+			workCount--;
+		}
+		fs.appendFile('./ErrLog.txt', id + '作品收藏请求失败:' + err + '\r\n', 'utf-8');
 	});
-
 }
 /**
  * [getOnePageWorks 获取用户某页作品]
@@ -166,47 +184,59 @@ function getPictureDetail(id){
  * @return {[type]}     [description]
  */
 function getOnePageWorks(url) {
-
 	var id = url.split('&p=')[0];
 	var p = parseInt(url.split('&p=')[1]);
-
+	var timer = setTimeout((p) => {
+		errPageList.add(url);
+		if(p ===1) {
+				firstPageCount--;
+			}else{
+				listPageCount--;
+		}
+		fs.appendFile('./ErrLog.txt', url + '目录资源请求挂起' + '\r\n', 'utf-8');
+	}, 120000);
 	got(PICLIST_URL + url,opt)
-	.then(function(response){
-			var html = response.body;
-			var $ = cheerio.load(html);
-
-			var total = parseInt(/\d*/.exec($('.count-badge').text()));
-			var current = p;
-			//防止没有作品引起的undefined带来的错误
-			if(typeof total === "number"){
-				if(total !== 0){
-					$('.work').each(function(index, ele){
-						workList.push(parseInt(/\d+/.exec($(this).attr('href')) + ''));
-					});
-					//如果是第一次爬该用户的作品目录，那么则将剩余的页数加入待处理队列中
-					if(current === 1 && total > 20){
-						for(var i = 2; (i - 1) * MAX_PER_PAGE < total; i++){
-							pageUrlList.push(id + '&p=' + i);
-						}
-					}
-				}
-				console.log('爬完' + /\d+/.exec(url) + '第' + current + '页啦~~');
-			}
-
-			if(current ===1) {
+	.then((response)=>{
+		//如果没有计入超时队列,那么根据p减小对应值
+		if(!errPageList.has(url)){
+			clearTimeout(timer);
+			if(p ===1) {
 				firstPageCount--;
 			}else{
 				listPageCount--;
 			}
-	}).catch(function(error){
-		if(p ===1) {
-			firstPageCount--;
-		}else{
-			listPageCount--;
 		}
-		fs.appendFile('./ErrLog.txt', url + '目录资源请求失败:' + error + '\r\n', 'utf-8', function(){
-		
-		});
+		var html = response.body;
+		var $ = cheerio.load(html);
+
+		var total = parseInt(/\d*/.exec($('.count-badge').text()));
+		//防止没有作品引起的undefined带来的错误
+		if(typeof total === "number"){
+			if(total !== 0){
+				$('.work').each(function(index, ele){
+					workList.push(parseInt(/\d+/.exec($(this).attr('href')) + ''));
+				});
+				//如果是第一次爬该用户的作品目录，那么则将剩余的页数加入待处理队列中
+				if(p === 1 && total > 20){
+					for(var i = 2; (i - 1) * MAX_PER_PAGE < total; i++){
+						pageUrlList.push(id + '&p=' + i);
+					}
+				}
+			}
+			console.log('爬完' + /\d+/.exec(url) + '第' + p + '页啦~~');
+		}
+
+	}).catch((error)=>{
+		//如果没有计入超时队列,那么根据p减小对应值
+		if(!errPageList.has(url)){
+			clearTimeout(timer);
+			if(p ===1) {
+				firstPageCount--;
+			}else{
+				listPageCount--;
+			}
+		}
+		fs.appendFile('./ErrLog.txt', url + '目录资源请求失败:' + error + '\r\n', 'utf-8');
 	});
 }
 
@@ -245,8 +275,8 @@ function refreshCookie(){
 }
 
 //process.on('message',function(startId){
-	// startId = parseInt(0);
-	// Users = Users.slice(startId, startId + 2000);
+	 startId = parseInt(0);
+	Users = Users.slice(startId, startId + 10000);
 	//主程序
 	pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies){
 		console.log(cookies);
@@ -262,29 +292,12 @@ function refreshCookie(){
 						return `${elem.name}=${elem.value}`;
 					}).join('; ');
 				})()
-			}
+			},
+			timeout: 12000
 		};
 		emitter.emit('getWorkList');
 		emitter.emit('getWork');
-	}).catch(function(error){
+	}).catch((error)=>{
 		console.log(error);
 	});
 //});
-
-// Return a copy of the given object, taking a predictable amount of space.
-function recreateObject(plainOldDataObject) {
-  return JSON.parse(JSON.stringify(plainOldDataObject));
-}
-
-function maybeGcCollect() {
-  if (typeof(global.gc) === 'function') {
-    global.gc();
-  }
-}
-
-// And if you really must make one function that does two things:
-function recreateObjectAndMaybeGcCollect(plainOldDataObject) {
-  var ret = recreateObject(plainOldDataObject);
-  maybeGcCollect();
-  return ret;
-}
