@@ -41,7 +41,7 @@ var flag = 0;
 var timeoutMs = 100;
 
 var tag = 0;
-var len = 50;
+var len = 75;
 //备用agent与email
 var agents = [USER_AGENT, USER_AGENT2, USER_AGENT2];
 var email = ['3343158402@qq.com', '3183769090@qq.com', 'M201571695@hust.edu.cn'];
@@ -59,12 +59,11 @@ emitter.on('getWork', ()=>{
 			}
 		}
 		if(workCount === 0 && workList.length === 0 && listPageCount === 0 && pageUrlList.length === 0 && count === Users.length){
-			return ;
-		}
+			console.log('finished');		}
 		tag = 0;
 	}
 	tag++;
-	if(tag > 50 * 300){
+	if(tag > 50 * 150){
 		len *= 2;
 	}
 	setTimeout(()=>{
@@ -275,8 +274,8 @@ function refreshCookie(){
 }
 
 //process.on('message',function(startId){
-	 startId = parseInt(0);
-	Users = Users.slice(startId, startId + 10000);
+	 startId = parseInt(20000);
+	Users = Users.slice(startId, startId + 20000);
 	//主程序
 	pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies){
 		console.log(cookies);
@@ -292,8 +291,7 @@ function refreshCookie(){
 						return `${elem.name}=${elem.value}`;
 					}).join('; ');
 				})()
-			},
-			timeout: 12000
+			}
 		};
 		emitter.emit('getWorkList');
 		emitter.emit('getWork');

@@ -7,22 +7,22 @@
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"dependencies": {
+		"https-proxy-agent":"latest",
 		"cheerio": "latest",
 		"request": "latest",
 		"async": "latest",
 		"got": "latest",
 		"set-cookie-parser": "latest",
-		"bloomfilter": "latest",
-		"system-sleep": "latest"
+		"bloomfilter": "latest"
 	},
 	"devDependencies": {
+		"https-proxy-agent":"latest",
 		"cheerio": "latest",
 		"request": "latest",
 		"async": "latest",
 		"got": "latest",
 		"set-cookie-parser": "latest",
-		"bloomfilter": "latest",
-		"system-sleep": "latest"
+		"bloomfilter": "latest"
 	},
 	"author": "",
 	"license": "MIT"
