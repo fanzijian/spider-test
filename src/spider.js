@@ -1,13 +1,20 @@
 const got = require('got');
 const cheerio = require('cheerio');
 const fs = require('fs');
-const Picture = require('./Picture');
+//const Picture = require('./Picture');
 const pixivCookie = require('./pixivCookie');
-const sleep = require('system-sleep');
-const BloomFilter = require('bloomfilter');
+//const sleep = require('system-sleep');
+// const BloomFilter = require('bloomfilter');
+// var bloom = new BloomFilter.BloomFilter( 200 * 1024 * 1024 * 8, 8);
+
 const EventEmitter = require('events').EventEmitter;
+const DB = require('./Mongodb');
+
+var pixivDb = new DB('mongodb://localhost:27017/pixiv');
+pixivDb.connect('pictures');
+//pixivDb.setCollection('pictures');
+
 var emitter = new EventEmitter();
-var bloom = new BloomFilter.BloomFilter( 200 * 1024 * 1024 * 8, 8);
 
 const MAX_PER_PAGE = 20;
 //作品列表网址
@@ -18,7 +25,7 @@ const PICINFO_URL = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_
 const COLLECTION_URL = 'https://www.pixiv.net/bookmark_detail.php?illust_id=';
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.59 Safari/537.36';
 const USER_AGENT2 = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36';
-var bloom = new BloomFilter.BloomFilter( 200 * 1024 * 1024 * 8, 8);
+
 var Users = fs.readFileSync('./data/users.txt','utf-8').split(' ');
 //当前检索的用户数
 var count = 0;
@@ -143,9 +150,22 @@ function getPictureDetail(id){
 		var viewCount = parseInt($('#wrapper .view-count').text());
 		var approval = parseInt($('#wrapper .rated-count').text());
 		var author = parseInt(/\d+/.exec($('div#wrapper .tabs a').first().attr('href')));
+		var data = {
+			pixiv_id: id,
+			author: author,
+			name: name,
+			time: time,
+			size: size,
+			tags: tags,
+			viewCount: viewCount,
+			approval: approval
+		}
+		pixivDb.findOneAndUpdate({"pixiv_id": id}, data, (err) => {
+			if(err){
+				fs.appendFile('./ErrLog.txt', id + '详情写入失败:' + err + '\r\n', 'utf-8');
+			}
+		});
 
-		var data = id + ' ' + name + ' ' + time + ' ' +  size + ' ' + tags + ' ' + viewCount + ' ' + approval + '\r\n';
-		fs.appendFile('./data/detail/' + author + '.txt', data, 'utf-8');
 	})
 	.catch((err)=>{
 		if(!errWorkList.has('d' + id)){
@@ -165,9 +185,15 @@ function getPictureDetail(id){
 		var $ = cheerio.load(html);
 		var collectCount = parseInt($('div#wrapper .bookmark-count').text());
 		var author = parseInt(/\d+/.exec($('a[data-user_id]').first().attr('data-user_id')));
-
-		var data = id +' ' + collectCount + '\r\n';
-		fs.appendFile('./data/collection/' + author + '.txt', data, 'utf-8');
+		var data = {
+			pixiv_id: id,
+			collectCount: collectCount
+		}
+		pixivDb.findOneAndUpdate({"pixiv_id": id}, data, (err) => {
+			if(err){
+				fs.appendFile('./ErrLog.txt', id + '收藏写入失败:' + err + '\r\n', 'utf-8');
+			}
+		});
 	})
 	.catch((err)=>{
 		if(!errWorkList.has('c' + id)){
@@ -274,7 +300,7 @@ function refreshCookie(){
 }
 
 //process.on('message',function(startId){
-	 startId = parseInt(20000);
+	 startId = parseInt(0);
 	Users = Users.slice(startId, startId + 20000);
 	//主程序
 	pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies){
