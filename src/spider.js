@@ -53,6 +53,9 @@ var len = 75;
 var agents = [USER_AGENT, USER_AGENT2, USER_AGENT2];
 var email = ['3343158402@qq.com', '3183769090@qq.com', 'M201571695@hust.edu.cn'];
 
+var date = new Date();
+date = '' + date.getFullYear() + '-' + (date.getMonth()<9? '0': '') + (date.getMonth() + 1) + '-' + date.getDate();
+
 emitter.on('getWork', ()=>{
 	if(workCount < len){
 		//是否处理该作品
@@ -141,12 +144,12 @@ function getPictureDetail(id){
 		var name = $('div#wrapper h1').first().text();
 		var size = $('#wrapper .meta').first().find('li').first().next().text().trim();
 		var time = $('#wrapper .meta').first().find('li').first().text().trim();
-		var tags = '';
+		var tags = [];
 		$('.work-tags .show-most-popular-illust-by-tag').each(function(index, ele){
-			tags += $(this).text().trim().replace(' ', '-') + ',';
+			tags.push($(this).text().trim());
 		});
-		time = time.replace(' ','-');
-		tags = tags.slice(0,-1);
+		//time = time.replace(/['年','月','日']/g,'/');
+		size = size.split('×');
 		var viewCount = parseInt($('#wrapper .view-count').text());
 		var approval = parseInt($('#wrapper .rated-count').text());
 		var author = parseInt(/\d+/.exec($('div#wrapper .tabs a').first().attr('href')));
@@ -156,9 +159,10 @@ function getPictureDetail(id){
 			name: name,
 			time: time,
 			size: size,
-			tags: tags,
-			viewCount: viewCount,
-			approval: approval
+			"data.0.date": date,
+			"data.0.tags": tags,
+			"data.0.viewCount": viewCount,
+			"data.0.approval":approval
 		}
 		pixivDb.findOneAndUpdate({"pixiv_id": id}, data, (err) => {
 			if(err){
@@ -184,10 +188,9 @@ function getPictureDetail(id){
 		var html = res.body;
 		var $ = cheerio.load(html);
 		var collectCount = parseInt($('div#wrapper .bookmark-count').text());
-		var author = parseInt(/\d+/.exec($('a[data-user_id]').first().attr('data-user_id')));
+		//var author = parseInt(/\d+/.exec($('a[data-user_id]').first().attr('data-user_id')));
 		var data = {
-			pixiv_id: id,
-			collectCount: collectCount
+			"data.0.collectCount": collectCount
 		}
 		pixivDb.findOneAndUpdate({"pixiv_id": id}, data, (err) => {
 			if(err){
@@ -300,8 +303,8 @@ function refreshCookie(){
 }
 
 //process.on('message',function(startId){
-	 startId = parseInt(0);
-	Users = Users.slice(startId, startId + 20000);
+	startId = parseInt(0);
+	Users = Users.slice(startId, startId + 30000);
 	//主程序
 	pixivCookie('M201571695@hust.edu.cn','23#224', USER_AGENT).then(function(cookies){
 		console.log(cookies);
