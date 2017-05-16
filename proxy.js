@@ -28,32 +28,32 @@ var getToken = got(opt).then((res) => {
 getToken.then(function(obj){
 	console.log('start');
 	got({
-	host:'222.92.187.6',
-	port:'8080',
-	path:LOGIN_API_URL,     //这里是访问的路径
-			headers: {
-				Origin: 'https://accounts.pixiv.net',
-				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36',
-				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-				Referer: 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index',
-				'X-Requested-With': 'XMLHttpRequest',
-				'Cookie': (function(){
-					return obj.cookies.map(function(elem){
-						return `${elem.name}=${elem.value}`;
-					}).join('; ');
-				})()
-			},
-			body: {
-				captcha: '',
-				g_recaptcha_response: '',
-				password: '23#224',
-				pixiv_id: '3183769090@qq.com',
-				post_key: obj.token,
-				ref: 'wwwtop_accounts_index',
-				return_to: 'https://www.pixiv.net/',
-				source: 'pc'
-			},
-			json: true
+		host:'222.92.187.6',
+		port:'8080',
+		path:LOGIN_API_URL,     //这里是访问的路径
+		headers: {
+			Origin: 'https://accounts.pixiv.net',
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36',
+			'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+			Referer: 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index',
+			'X-Requested-With': 'XMLHttpRequest',
+			'Cookie': (function(){
+				return obj.cookies.map(function(elem){
+					return `${elem.name}=${elem.value}`;
+				}).join('; ');
+			})()
+		},
+		body: {
+			captcha: '',
+			g_recaptcha_response: '',
+			password: '23#224',
+			pixiv_id: '3183769090@qq.com',
+			post_key: obj.token,
+			ref: 'wwwtop_accounts_index',
+			return_to: 'https://www.pixiv.net/',
+			source: 'pc'
+		},
+		json: true
 		})
 		.then(function(response){
 			//console.log('response');
