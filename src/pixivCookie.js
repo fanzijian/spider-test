@@ -8,7 +8,10 @@ const LOGIN_API_URL = 'https://accounts.pixiv.net/api/login?lang=zh';
 
 const pixivCookie = function(username, password, agent){
 	return new Promise(function(resolve, reject){
-		const getToken = got(LOGIN_URL, {
+		const getToken = got({
+				host:'122.228.25.97',
+				port:'8101',
+				path:'https://www.pixiv.net',     //这里是访问的路径
 				headers: {
 					'User-Agent': agent
 				}
@@ -29,7 +32,10 @@ const pixivCookie = function(username, password, agent){
 			});
 		getToken.then(function(obj){
 			console.log('start');
-			got(LOGIN_API_URL, {
+			got({
+				host:'122.228.25.97',
+				port:'8101',
+				path:LOGIN_API_URL,	//这里是访问的路径
 					headers: {
 						Origin: 'https://accounts.pixiv.net',
 						'User-Agent': agent,

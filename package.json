@@ -1,29 +1,30 @@
 {
-	"name": "spider",
-	"version": "1.0.0",
-	"description": "",
-	"main": "index.js",
-	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
-	},
-	"dependencies": {
-		"cheerio": "latest",
-		"request": "latest",
-		"async": "latest",
-		"got": "latest",
-		"set-cookie-parser": "latest",
-		"bloomfilter": "latest",
-		"system-sleep": "latest"
-	},
-	"devDependencies": {
-		"cheerio": "latest",
-		"request": "latest",
-		"async": "latest",
-		"got": "latest",
-		"set-cookie-parser": "latest",
-		"bloomfilter": "latest",
-		"system-sleep": "latest"
-	},
-	"author": "",
-	"license": "MIT"
+  "name": "spider",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "async": "latest",
+    "bloomfilter": "latest",
+    "cheerio": "latest",
+    "got": "latest",
+    "request": "latest",
+    "set-cookie-parser": "latest",
+    "system-sleep": "latest",
+    "tunnel": "0.0.4"
+  },
+  "devDependencies": {
+    "cheerio": "latest",
+    "request": "latest",
+    "async": "latest",
+    "got": "latest",
+    "set-cookie-parser": "latest",
+    "bloomfilter": "latest",
+    "system-sleep": "latest"
+  },
+  "author": "",
+  "license": "MIT"
 }
